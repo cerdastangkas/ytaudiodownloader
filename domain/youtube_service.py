@@ -76,17 +76,19 @@ class YouTubeService:
 
             # Return both videos and pagination tokens
             return {
+                'success': True,
                 'videos': videos,
-                'nextPageToken': response.get('nextPageToken'),
-                'prevPageToken': response.get('prevPageToken')
+                'next_page_token': response.get('nextPageToken'),
+                'error': None
             }
 
         except Exception as e:
             print(f"An error occurred: {str(e)}")
             return {
+                'success': False,
                 'videos': [],
-                'nextPageToken': None,
-                'prevPageToken': None
+                'next_page_token': None,
+                'error': str(e)
             }
 
     def download_audio(self, video_id, progress_callback=None):
