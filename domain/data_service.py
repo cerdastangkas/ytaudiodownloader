@@ -1,9 +1,12 @@
 import pandas as pd
 import streamlit as st
+import os
+from pathlib import Path
 
 class DataService:
     def __init__(self):
-        pass
+        self.excel_file = 'youtube_videos.xlsx'
+        self.download_dir = Path('data/downloaded')
 
     def load_excel_data(self, file_path):
         """Load data from Excel file"""
@@ -16,38 +19,53 @@ class DataService:
             st.error(f"Error loading Excel file: {str(e)}")
             return []
 
-    def save_videos_to_excel(self, videos, file_path):
-        """Save videos to Excel file"""
+    def save_videos_to_excel(self, videos, excel_file=None):
+        """Save videos data to Excel file"""
+        if excel_file:
+            self.excel_file = excel_file
+            
+        # Convert videos to DataFrame
+        df = pd.DataFrame(videos)
+        
         try:
-            # Convert videos to DataFrame and format dates for Excel
-            df = pd.DataFrame(videos)
-            
-            # Load existing data
-            existing_data = []
-            try:
-                existing_df = pd.read_excel(file_path)
-                # Convert existing dates to timezone-aware
-                existing_df['published_at'] = pd.to_datetime(existing_df['published_at']).dt.tz_localize('UTC')
-                existing_data = existing_df.to_dict('records')
-            except FileNotFoundError:
-                pass
-            
-            # Combine existing and new data, removing duplicates based on video ID
-            all_data = existing_data + videos
-            df_all = pd.DataFrame(all_data).drop_duplicates(subset=['id'])
-            
-            # Convert all published_at to human readable format
-            df_all['published_at'] = pd.to_datetime(df_all['published_at'])
-            df_all['published_date'] = df_all['published_at'].dt.strftime('%Y-%m-%d %H:%M:%S')
-            df_all = df_all.sort_values('published_at', ascending=False)
-            
-            # Drop the timezone-aware column and rename the formatted one
-            df_all = df_all.drop(columns=['published_at'])
-            df_all = df_all.rename(columns={'published_date': 'published_at'})
+            # If file exists, append new data
+            if os.path.exists(self.excel_file):
+                existing_df = pd.read_excel(self.excel_file)
+                # Remove duplicates based on video ID
+                df = pd.concat([existing_df, df]).drop_duplicates(subset=['id'], keep='last')
             
             # Save to Excel
-            df_all.to_excel(file_path, index=False)
-            return len(df_all)
+            df.to_excel(self.excel_file, index=False)
+            return len(df)
         except Exception as e:
             st.error(f"Error saving to Excel: {str(e)}")
             return 0
+    
+    def clean_excel_data(self):
+        """Remove entries from Excel that don't have corresponding audio files"""
+        try:
+            if not os.path.exists(self.excel_file):
+                return 0, 0
+            
+            # Read Excel file
+            df = pd.read_excel(self.excel_file)
+            initial_count = len(df)
+            
+            # Get list of downloaded files
+            if not self.download_dir.exists():
+                return initial_count, 0
+            
+            downloaded_files = list(self.download_dir.glob('*.mp3'))
+            downloaded_ids = [f.stem for f in downloaded_files]
+            
+            # Filter DataFrame to keep only downloaded files
+            df = df[df['id'].isin(downloaded_ids)]
+            
+            # Save cleaned DataFrame
+            df.to_excel(self.excel_file, index=False)
+            final_count = len(df)
+            
+            return initial_count, final_count
+        except Exception as e:
+            st.error(f"Error cleaning Excel data: {str(e)}")
+            return 0, 0
