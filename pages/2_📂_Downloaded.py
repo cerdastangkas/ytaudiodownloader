@@ -4,6 +4,7 @@ import os
 from domain.youtube_service import YouTubeService
 from domain.data_service import DataService
 from utils.date_formatter import format_published_date
+import math
 
 # Page config
 st.set_page_config(
@@ -12,9 +13,32 @@ st.set_page_config(
     layout='wide'
 )
 
+# Custom CSS
+st.markdown("""
+    <style>
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+    }
+    .pagination-text {
+        text-align: center;
+        font-size: 1rem;
+        color: #31333F;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 # Initialize services
 youtube_service = YouTubeService(os.getenv('YOUTUBE_API_KEY'))
 data_service = DataService()
+
+# Initialize session state for pagination
+if 'downloaded_page' not in st.session_state:
+    st.session_state.downloaded_page = 1
+if 'downloaded_per_page' not in st.session_state:
+    st.session_state.downloaded_per_page = 9
 
 # Title
 st.title('📂 Downloaded Videos')
@@ -66,10 +90,20 @@ def get_downloaded_videos():
 # Get downloaded videos
 downloaded_videos = get_downloaded_videos()
 
-if downloaded_videos:
-    # Display videos in a grid
+if not downloaded_videos:
+    st.info("No downloaded files found. Go to Search page to download some audio!")
+else:
+    total_files = len(downloaded_videos)
+    total_pages = math.ceil(total_files / st.session_state.downloaded_per_page)
+    
+    # Calculate start and end indices for current page
+    start_idx = (st.session_state.downloaded_page - 1) * st.session_state.downloaded_per_page
+    end_idx = start_idx + st.session_state.downloaded_per_page
+    
+    # Display current page files in grid
+    current_videos = downloaded_videos[start_idx:end_idx]
     cols = st.columns(3)
-    for i, video in enumerate(downloaded_videos):
+    for i, video in enumerate(current_videos):
         with cols[i % 3]:
             with st.container():
                 # Video title and thumbnail if available
@@ -108,3 +142,32 @@ if downloaded_videos:
                         st.error(f'Error deleting file: {str(e)}')
                 
                 st.markdown("---")
+
+    # Pagination controls
+    if total_pages > 1:
+        cols = st.columns([1, 3, 1])
+        
+        # Previous page button
+        with cols[0]:
+            if st.session_state.downloaded_page > 1:
+                if st.button("← Previous", use_container_width=True):
+                    st.session_state.downloaded_page -= 1
+                    st.rerun()
+            else:
+                st.write("")  # Placeholder for alignment
+        
+        # Page indicator
+        with cols[1]:
+            st.markdown(
+                f'<div class="pagination-text">Page {st.session_state.downloaded_page} of {total_pages}</div>',
+                unsafe_allow_html=True
+            )
+        
+        # Next page button
+        with cols[2]:
+            if st.session_state.downloaded_page < total_pages:
+                if st.button("Next →", use_container_width=True):
+                    st.session_state.downloaded_page += 1
+                    st.rerun()
+            else:
+                st.write("")  # Placeholder for alignment
