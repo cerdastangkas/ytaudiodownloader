@@ -40,23 +40,48 @@ def display_search_results(youtube_service: YouTubeService):
         
         # Pagination controls
         if total_pages > 1:
-            col1, col2, col3 = st.columns([2, 3, 2])
+            st.markdown(
+                """
+                <style>
+                .pagination-container {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 1rem 0;
+                }
+                .pagination-text {
+                    text-align: center;
+                    font-size: 1rem;
+                    color: #31333F;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
             
-            with col2:
-                pagination = st.container()
-                
-                # Previous page button
+            cols = st.columns([1, 3, 1])
+            
+            # Previous page button
+            with cols[0]:
                 if st.session_state.current_page > 1:
-                    if pagination.button("← Previous", key="prev"):
+                    if st.button("← Previous", use_container_width=True):
                         st.session_state.current_page -= 1
                         st.rerun()
-                
-                # Page indicator
-                pagination.write(f"Page {st.session_state.current_page} of {total_pages}")
-                
-                # Next page button
+                else:
+                    # Placeholder for alignment
+                    st.write("")
+            
+            # Page indicator
+            with cols[1]:
+                st.markdown(
+                    f'<div class="pagination-text">Page {st.session_state.current_page} of {total_pages}</div>',
+                    unsafe_allow_html=True
+                )
+            
+            # Next page button
+            with cols[2]:
                 if st.session_state.current_page < total_pages or st.session_state.page_token:
-                    if pagination.button("Next →", key="next"):
+                    if st.button("Next →", use_container_width=True):
                         if end_idx >= len(st.session_state.all_videos) and st.session_state.page_token:
                             # Fetch more videos
                             results = youtube_service.search_videos(
@@ -74,3 +99,6 @@ def display_search_results(youtube_service: YouTubeService):
                         
                         st.session_state.current_page += 1
                         st.rerun()
+                else:
+                    # Placeholder for alignment
+                    st.write("")

@@ -37,32 +37,33 @@ class YouTubeService:
             request = youtube.search().list(**search_params)
             response = request.execute()
 
-            # Process search results
-            videos = []
+            # Get video details including duration
             video_ids = [item['id']['videoId'] for item in response.get('items', [])]
             
             # Initialize duration map
             duration_map = {}
             
-            # Get video details including duration
             if video_ids:
                 video_details = youtube.videos().list(
                     part='contentDetails',
                     id=','.join(video_ids)
                 ).execute()
                 
-                # Create a mapping of video ID to duration and filter videos less than 3 minutes
+                # Create a mapping of video ID to duration
                 for item in video_details.get('items', []):
                     duration = item['contentDetails']['duration']
                     duration_seconds = self._duration_to_seconds(duration)
+                    # Only include videos longer than 3 minutes
                     if duration_seconds >= 180:  # 3 minutes = 180 seconds
                         duration_map[item['id']] = self._format_duration(duration)
             
+            # Process search results and filter out videos with no duration (too short)
+            videos = []
             for item in response.get('items', []):
                 video_id = item['id']['videoId']
-                snippet = item['snippet']
-                
+                # Only include videos that are in our duration map (longer than 3 minutes)
                 if video_id in duration_map:
+                    snippet = item['snippet']
                     video_info = {
                         'id': video_id,
                         'title': snippet['title'],
