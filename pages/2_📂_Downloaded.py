@@ -41,8 +41,18 @@ if 'downloaded_per_page' not in st.session_state:
     st.session_state.downloaded_per_page = 9
 
 # Title
-st.title('📂 Downloaded Videos')
+st.title('📂 Downloaded Files')
 st.markdown('View and manage your downloaded audio files')
+
+# Add cleanup button in sidebar
+with st.sidebar:
+    if st.button("🧹 Clean Database", help="Remove entries from database that don't have corresponding audio files"):
+        initial_count, final_count = data_service.clean_excel_data()
+        removed = initial_count - final_count
+        if removed > 0:
+            st.success(f"Removed {removed} entries from database that don't have audio files")
+        else:
+            st.info("Database is already clean!")
 
 # Function to get downloaded videos
 def get_downloaded_videos():
