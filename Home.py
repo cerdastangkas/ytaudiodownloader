@@ -6,20 +6,17 @@ from ui.search_form import search_youtube_videos
 from ui.results_display import display_search_results
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Initialize session states for API keys if not exists
+if 'youtube_api_key' not in st.session_state:
+    st.session_state.youtube_api_key = os.getenv('YOUTUBE_API_KEY', '')
+if 'openai_api_key' not in st.session_state:
+    st.session_state.openai_api_key = os.getenv('OPENAI_API_KEY', '')
 
-# Get API key from environment variables
-api_key = os.getenv('YOUTUBE_API_KEY')
-if not api_key:
-    st.error('YouTube API key not found in environment variables. Please check your .env file.')
-    st.stop()
-
-# Initialize services
-youtube_service = YouTubeService(api_key)
+# Initialize services with session state API key
+youtube_service = YouTubeService(st.session_state.youtube_api_key)
 data_service = DataService()
 
-# Page config
+# Page configuration
 st.set_page_config(
     page_title="YouTube Audio Downloader",
     page_icon="🎵",
@@ -97,6 +94,59 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+# Sidebar configuration
+with st.sidebar:
+    st.header("⚙️ Configuration")
+    
+    # YouTube API Key
+    st.subheader("YouTube API")
+    new_youtube_key = st.text_input(
+        "YouTube API Key",
+        value=st.session_state.youtube_api_key,
+        type="password",
+        help="Enter your YouTube Data API v3 key"
+    )
+    
+    if st.button("Apply YouTube API Key"):
+        if new_youtube_key:
+            if new_youtube_key.startswith('AIza'):
+                st.session_state.youtube_api_key = new_youtube_key
+                youtube_service = YouTubeService(new_youtube_key)
+                st.success("✅ API key updated successfully")
+                st.rerun()
+            else:
+                st.error("❌ Invalid YouTube API key format")
+        else:
+            st.error("❌ API key cannot be empty")
+    
+    st.markdown("---")
+    
+    # OpenAI API Key
+    st.subheader("OpenAI API")
+    new_openai_key = st.text_input(
+        "OpenAI API Key",
+        value=st.session_state.openai_api_key,
+        type="password",
+        help="Enter your OpenAI API key"
+    )
+    
+    if st.button("Apply OpenAI API Key"):
+        if new_openai_key:
+            if new_openai_key.startswith('sk-'):
+                st.session_state.openai_api_key = new_openai_key
+                st.success("✅ API key updated successfully")
+            else:
+                st.error("❌ Invalid OpenAI API key format")
+        else:
+            st.error("❌ API key cannot be empty")
+    
+    st.markdown("---")
+    st.markdown("""
+        Need API keys?
+        - [Get YouTube API Key](https://console.cloud.google.com/apis/credentials)
+        - [Get OpenAI API Key](https://platform.openai.com/api-keys)
+    """)
 
 # Main header
 st.markdown('<p class="main-header">🎵 YouTube Audio Downloader</p>', unsafe_allow_html=True)

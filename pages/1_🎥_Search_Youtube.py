@@ -1,27 +1,16 @@
 import streamlit as st
-import os
 from domain.youtube_service import YouTubeService
 from domain.data_service import DataService
 from ui.search_form import search_youtube_videos
 from ui.results_display import display_search_results
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
-
-# Get API key from environment variables
-api_key = os.getenv('YOUTUBE_API_KEY')
-if not api_key:
-    st.error('YouTube API key not found in environment variables. Please check your .env file.')
-    st.stop()
-
-# Initialize services
-youtube_service = YouTubeService(api_key)
+# Initialize services with session state API key
+youtube_service = YouTubeService(st.session_state.youtube_api_key)
 data_service = DataService()
 
 # Page config
 st.set_page_config(
-    page_title='YouTube Video Search',
+    page_title='Search YouTube Video',
     page_icon='🎥',
     layout='wide'
 )
@@ -29,12 +18,12 @@ st.set_page_config(
 # Initialize session states
 if 'search_params' not in st.session_state:
     st.session_state.search_params = None
-if 'current_page' not in st.session_state:
-    st.session_state.current_page = 1
-if 'page_token' not in st.session_state:
-    st.session_state.page_token = None
 if 'all_videos' not in st.session_state:
     st.session_state.all_videos = []
+if 'page_token' not in st.session_state:
+    st.session_state.page_token = None
+if 'current_page' not in st.session_state:
+    st.session_state.current_page = 1
 if 'videos_per_page' not in st.session_state:
     st.session_state.videos_per_page = 9
 if 'download_states' not in st.session_state:
@@ -62,6 +51,11 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
+
+# Check if API key is set
+if not st.session_state.youtube_api_key:
+    st.error('YouTube API key not configured. Please set it in the Home page.')
+    st.stop()
 
 # Search form
 search_youtube_videos(youtube_service)

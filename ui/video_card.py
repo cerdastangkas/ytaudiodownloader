@@ -6,21 +6,13 @@ def display_video_card(video: dict, youtube_service: YouTubeService):
     """Display a single video card with download functionality"""
     with st.container():
         # Thumbnail
-        st.image(video['thumbnail'], use_container_width=True)
+        if 'thumbnail' in video:
+            st.image(video['thumbnail'], width=None)
         
         # Video title as a link
-        st.markdown(f"### [{video['title']}](https://youtube.com/watch?v={video['id']})")
+        st.markdown(f"### [{video.get('title', 'Unknown Title')}](https://youtube.com/watch?v={video['id']})")
         
-        # Channel, duration and publish date
-        st.markdown(f"Channel: {video['channel_title']}")
-        st.markdown(f"Duration: {video.get('duration', 'N/A')}")
-        st.markdown(f"Published: {format_published_date(video['published_at'])}")
-        
-        # Description
-        description = video['description'][:150] + '...' if len(video['description']) > 150 else video['description']
-        st.markdown(f"Description: {description}")
-        
-        # Download controls
+         # Download controls
         video_id = video['id']
         download_key = f"download_{video_id}"
         
@@ -40,5 +32,14 @@ def display_video_card(video: dict, youtube_service: YouTubeService):
             if st.button("🎵 Download", key=download_key):
                 st.session_state[download_key] = True
                 st.rerun()
+
+        # Channel, duration and publish date
+        st.markdown(f"Channel: {video.get('channel_title', 'Unknown Channel')}")
+        st.markdown(f"Duration: {video.get('duration', 'N/A')}")
+        st.markdown(f"Published: {format_published_date(video['published_at'])}")
+        
+        # Description
+        description = video['description'][:150] + '...' if len(video['description']) > 150 else video['description']
+        st.markdown(f"Description: {description}")
         
         st.markdown("---")
