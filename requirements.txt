@@ -1,6 +1,7 @@
-streamlit
-google-api-python-client
-python-dotenv
-pandas
-openpyxl
-yt-dlp
+streamlit==1.29.0
+google-api-python-client==2.108.0
+python-dotenv==1.0.0
+yt-dlp==2023.11.16
+pandas==2.1.4
+openpyxl==3.1.2
+pydub==0.25.1

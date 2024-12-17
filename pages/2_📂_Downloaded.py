@@ -5,13 +5,20 @@ from domain.youtube_service import YouTubeService
 from domain.data_service import DataService
 from utils.date_formatter import format_published_date
 import math
+from pathlib import Path
+from domain.audio_service import AudioService
 
 # Page config
 st.set_page_config(
-    page_title='Downloaded Videos',
+    page_title='Downloaded Files',
     page_icon='📂',
     layout='wide'
 )
+
+# Initialize services
+youtube_service = YouTubeService(os.getenv('YOUTUBE_API_KEY'))
+data_service = DataService()
+audio_service = AudioService()
 
 # Custom CSS
 st.markdown("""
@@ -27,12 +34,18 @@ st.markdown("""
         font-size: 1rem;
         color: #31333F;
     }
+    .audio-controls {
+        display: flex;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .file-info {
+        font-size: 0.9rem;
+        color: #666;
+        margin-top: 0.5rem;
+    }
     </style>
 """, unsafe_allow_html=True)
-
-# Initialize services
-youtube_service = YouTubeService(os.getenv('YOUTUBE_API_KEY'))
-data_service = DataService()
 
 # Initialize session state for pagination
 if 'downloaded_page' not in st.session_state:
@@ -42,7 +55,7 @@ if 'downloaded_per_page' not in st.session_state:
 
 # Title
 st.title('📂 Downloaded Files')
-st.markdown('View and manage your downloaded audio files')
+st.markdown('View, play, and manage your downloaded audio files')
 
 # Add cleanup button in sidebar
 with st.sidebar:
@@ -100,6 +113,65 @@ def get_downloaded_videos():
 # Get downloaded videos
 downloaded_videos = get_downloaded_videos()
 
+def display_downloaded_file(file_info, col):
+    """Display a single downloaded file card"""
+    with col:
+        # Display thumbnail if available
+        if 'thumbnail' in file_info:
+            st.image(file_info['thumbnail'], width=None)
+        
+        # Video title and details
+        st.markdown(f"### {file_info['title']}")
+        st.markdown(f"**Channel:** {file_info['channel_title']}")
+        st.markdown(f"**Duration:** {file_info['duration']}")
+        
+        # Display published date if available
+        if 'published_at' in file_info:
+            st.markdown(f"**Published:** {file_info['published_at']}")
+        
+        # Check if OGG version exists
+        ogg_file = audio_service.get_converted_file(file_info['id'])
+        
+        # Audio player - use OGG if available, otherwise MP3
+        audio_file = str(ogg_file) if ogg_file else file_info['file_path']
+        file_format = "OGG" if ogg_file else "MP3"
+        st.markdown(f"##### 🎵 Audio Player ({file_format})")
+        st.audio(audio_file)
+        
+        # File size information
+        file_size = os.path.getsize(file_info['file_path']) / (1024 * 1024)  # Convert to MB
+        st.markdown(f"**Size:** {file_size:.1f} MB")
+        
+        col1, col2 = st.columns(2)
+        
+        # Convert to OGG button
+        with col1:
+            if not ogg_file:
+                if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
+                    with st.spinner("Converting to OGG format..."):
+                        success, result = audio_service.convert_to_ogg(file_info['file_path'])
+                        if success:
+                            st.success("✅ Conversion successful!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Conversion failed: {result}")
+        
+        # Delete button
+        with col2:
+            if st.button(f"🗑️ Delete", key=f"delete_{file_info['id']}"):
+                try:
+                    # Delete MP3
+                    os.remove(file_info['file_path'])
+                    # Delete OGG if exists
+                    if ogg_file:
+                        os.remove(ogg_file)
+                    st.success("File deleted successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error deleting file: {str(e)}")
+        
+        st.markdown("---")
+
 if not downloaded_videos:
     st.info("No downloaded files found. Go to Search page to download some audio!")
 else:
@@ -114,45 +186,8 @@ else:
     current_videos = downloaded_videos[start_idx:end_idx]
     cols = st.columns(3)
     for i, video in enumerate(current_videos):
-        with cols[i % 3]:
-            with st.container():
-                # Video title and thumbnail if available
-                if 'thumbnail' in video:
-                    st.image(video['thumbnail'], use_container_width=True)
-                st.markdown(f"### {video.get('title', 'Unknown Title')}")
-                
-                # Video details if available
-                if 'channel_title' in video:
-                    st.markdown(f"Channel: {video['channel_title']}")
-                if 'duration' in video:
-                    st.markdown(f"Duration: {video['duration']}")
-                if 'published_at' in video:
-                    st.markdown(f"Published: {format_published_date(video['published_at'])}")
-                
-                # File details and actions
-                file_size = os.path.getsize(video['file_path']) / (1024 * 1024)  # Convert to MB
-                st.markdown(f"File size: {file_size:.1f} MB")
-                
-                # Download button
-                with open(video['file_path'], 'rb') as f:
-                    st.download_button(
-                        label="🎵 Download MP3",
-                        data=f,
-                        file_name=video['file_name'],
-                        mime='audio/mpeg'
-                    )
-                
-                # Delete button
-                if st.button('🗑️ Delete', key=f"delete_{video['id']}"):
-                    try:
-                        os.remove(video['file_path'])
-                        st.success('File deleted successfully!')
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f'Error deleting file: {str(e)}')
-                
-                st.markdown("---")
-
+        display_downloaded_file(video, cols[i % 3])
+    
     # Pagination controls
     if total_pages > 1:
         cols = st.columns([1, 3, 1])
@@ -164,7 +199,7 @@ else:
                     st.session_state.downloaded_page -= 1
                     st.rerun()
             else:
-                st.write("")  # Placeholder for alignment
+                st.write("")
         
         # Page indicator
         with cols[1]:
@@ -180,4 +215,4 @@ else:
                     st.session_state.downloaded_page += 1
                     st.rerun()
             else:
-                st.write("")  # Placeholder for alignment
+                st.write("")
