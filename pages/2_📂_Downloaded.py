@@ -113,6 +113,55 @@ def get_downloaded_videos():
 # Get downloaded videos
 downloaded_videos = get_downloaded_videos()
 
+def display_stats(df):
+    """Display statistics about downloaded files"""
+    total_files = len(df)
+    
+    # Calculate total size
+    total_size_mb = sum(os.path.getsize(file_info['file_path']) / (1024 * 1024) 
+                       for file_info in df 
+                       if os.path.exists(file_info['file_path']))
+    
+    # Calculate total duration in seconds
+    total_duration_sec = sum(duration_to_seconds(file_info['duration']) 
+                           for file_info in df)
+    
+    # Convert total duration to hours:minutes:seconds
+    hours = total_duration_sec // 3600
+    minutes = (total_duration_sec % 3600) // 60
+    seconds = total_duration_sec % 60
+    
+    # Create three columns for stats
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("Total Files", f"{total_files:,}")
+    with col2:
+        st.metric("Total Size", f"{total_size_mb:.1f} MB")
+    with col3:
+        st.metric("Total Duration", f"{int(hours)}h {int(minutes)}m {int(seconds)}s")
+    
+    st.markdown("---")
+
+def duration_to_seconds(duration_str):
+    """Convert duration string (HH:MM:SS) to seconds"""
+    try:
+        # Handle different duration formats
+        if ':' not in duration_str:
+            return 0
+        
+        parts = duration_str.split(':')
+        if len(parts) == 3:  # HH:MM:SS
+            h, m, s = parts
+            return int(h) * 3600 + int(m) * 60 + int(s)
+        elif len(parts) == 2:  # MM:SS
+            m, s = parts
+            return int(m) * 60 + int(s)
+        else:
+            return 0
+    except:
+        return 0
+
 def display_downloaded_file(file_info, col):
     """Display a single downloaded file card"""
     with col:
@@ -175,6 +224,7 @@ def display_downloaded_file(file_info, col):
 if not downloaded_videos:
     st.info("No downloaded files found. Go to Search page to download some audio!")
 else:
+    display_stats(downloaded_videos)
     total_files = len(downloaded_videos)
     total_pages = math.ceil(total_files / st.session_state.downloaded_per_page)
     
