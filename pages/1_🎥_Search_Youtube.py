@@ -4,6 +4,11 @@ from domain.data_service import DataService
 from ui.search_form import search_youtube_videos
 from ui.results_display import display_search_results
 
+# Check for API key
+if 'youtube_api_key' not in st.session_state or not st.session_state.youtube_api_key:
+    st.error("⚠️ Please set your YouTube API key in the main page first!")
+    st.stop()
+
 # Initialize services with session state API key
 youtube_service = YouTubeService(st.session_state.youtube_api_key)
 data_service = DataService()
@@ -51,11 +56,6 @@ st.markdown("""
     }
     </style>
 """, unsafe_allow_html=True)
-
-# Check if API key is set
-if not st.session_state.youtube_api_key:
-    st.error('YouTube API key not configured. Please set it in the Home page.')
-    st.stop()
 
 # Search form
 search_youtube_videos(youtube_service)

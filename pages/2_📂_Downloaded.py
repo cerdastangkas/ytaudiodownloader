@@ -3,11 +3,14 @@ import pandas as pd
 import os
 from domain.youtube_service import YouTubeService
 from domain.data_service import DataService
-from utils.date_formatter import format_published_date
-import math
-from pathlib import Path
 from domain.audio_service import AudioService
 from domain.transcription_service import TranscriptionService
+from domain.audio_splitter import AudioSplitter
+import math
+from pathlib import Path
+import datetime
+from utils.date_formatter import format_published_date
+from domain.audio_splitter import AudioSplitter
 
 # Page config
 st.set_page_config(
@@ -21,6 +24,7 @@ youtube_service = YouTubeService(os.getenv('YOUTUBE_API_KEY'))
 data_service = DataService()
 audio_service = AudioService()
 transcription_service = TranscriptionService()
+audio_splitter = AudioSplitter()
 
 # Custom CSS
 st.markdown("""
@@ -165,48 +169,36 @@ def duration_to_seconds(duration_str):
         return 0
 
 def display_downloaded_file(file_info, col):
-    """Display a single downloaded file card"""
     with col:
-        # Display thumbnail if available
         if 'thumbnail' in file_info:
             st.image(file_info['thumbnail'], width=None)
         
-        # Video title and details
         st.markdown(f"### {file_info['title']}")
         st.markdown(f"**Channel:** {file_info['channel_title']}")
         st.markdown(f"**Duration:** {file_info['duration']}")
         
-        # Display published date if available
         if 'published_at' in file_info:
             st.markdown(f"**Published:** {file_info['published_at']}")
         
-        # Check if OGG version exists
         ogg_file = audio_service.get_converted_file(file_info['id'])
-        
-        # Audio player - use OGG if available, otherwise MP3
         audio_file = str(ogg_file) if ogg_file else file_info['file_path']
         file_format = "OGG" if ogg_file else "MP3"
+        
         st.markdown(f"##### 🎵 Audio Player ({file_format})")
         st.audio(audio_file)
         
-        # File size information
-        file_size = os.path.getsize(file_info['file_path']) / (1024 * 1024)  # Convert to MB
+        file_size = os.path.getsize(file_info['file_path']) / (1024 * 1024)
         st.markdown(f"**Size:** {file_size:.1f} MB")
         
-        col1, col2, col3 = st.columns(3)
-        
-        # Check if transcription exists
-        existing_transcription = transcription_service.get_transcription(file_info['id'])
+        col1, col2 = st.columns(2)
         
         with col1:
+            # Check if transcription exists
+            existing_transcription = transcription_service.get_transcription(file_info['id'])
+            
             if existing_transcription:
-                # Show View Transcription button if transcription exists
-                if st.button("📄 View Transcription", key=f"view_{file_info['id']}"):
-                    st.markdown("#### Transcription")
-                    for segment in existing_transcription:
-                        st.markdown(f"**[{segment['start_time']:.1f}s - {segment['end_time']:.1f}s]** {segment['text']}")
+                st.success("✅ Transcription available")
             elif ogg_file:
-                # Show Transcribe button if OGG exists but no transcription
                 if st.button("🎯 Transcribe", key=f"transcribe_{file_info['id']}"):
                     with st.spinner("Transcribing audio... This may take a while."):
                         success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
@@ -216,7 +208,6 @@ def display_downloaded_file(file_info, col):
                         else:
                             st.error(f"❌ Transcription failed: {result}")
             else:
-                # Show Convert to OGG button if no OGG file exists
                 if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
                     with st.spinner("Converting to OGG format..."):
                         success, result = audio_service.convert_to_ogg(file_info['file_path'])
@@ -226,19 +217,20 @@ def display_downloaded_file(file_info, col):
                         else:
                             st.error(f"❌ Conversion failed: {result}")
         
-        # Delete button
         with col2:
             if st.button(f"🗑️ Delete", key=f"delete_{file_info['id']}"):
                 try:
-                    # Delete MP3
                     os.remove(file_info['file_path'])
-                    # Delete OGG if exists
                     if ogg_file:
                         os.remove(ogg_file)
-                    # Delete transcription if exists
-                    excel_path = transcription_service.get_excel_path(file_info['id'])
-                    if os.path.exists(excel_path):
-                        os.remove(excel_path)
+                    transcription_path = transcription_service.get_excel_path(file_info['id'])
+                    if os.path.exists(transcription_path):
+                        os.remove(transcription_path)
+                    splits_dir = audio_splitter.get_splits_directory(file_info['id'])
+                    if splits_dir.exists():
+                        for split_file in splits_dir.glob('*.ogg'):
+                            os.remove(split_file)
+                        os.rmdir(splits_dir)
                     st.success("File deleted successfully!")
                     st.rerun()
                 except Exception as e:
