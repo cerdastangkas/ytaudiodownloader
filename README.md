@@ -1,6 +1,6 @@
 # YouTube Audio Downloader
 
-A streamlined Streamlit application for searching and downloading audio from YouTube videos, with advanced features like audio format conversion and comprehensive metadata display.
+A streamlined Streamlit application for searching and downloading audio from YouTube videos, with advanced features like audio format conversion, comprehensive metadata display, and audio transcription.
 
 ## Features
 
@@ -9,6 +9,9 @@ A streamlined Streamlit application for searching and downloading audio from You
 - ⏱️ Duration-based filtering (>3 minutes)
 - 🎵 Download audio in MP3 format
 - 🔄 Convert audio to OGG format
+- 🎯 Transcribe audio to text with timestamps
+- ✂️ Split audio into segments based on transcription
+- 📝 View and manage transcriptions with audio segments
 - 🖼️ Thumbnail previews for videos and downloaded files
 - 📊 Progress tracking for downloads
 - 📑 Export video details to Excel
@@ -81,6 +84,13 @@ streamlit run Home.py
    - Convert MP3 files to OGG format
    - Delete unwanted files
 
+5. Transcribe and Split Audio:
+   - On the "Downloaded" page, convert audio to OGG format
+   - Click "Transcribe" to generate text with timestamps
+   - View transcriptions in the "Transcriptions" page
+   - Split audio into segments based on transcription
+   - Play individual audio segments alongside text
+
 ## Project Structure
 
 ```
@@ -93,13 +103,17 @@ ytaudiodownloader/
 │   ├── youtube_service.py  # YouTube API interactions
 │   ├── audio_service.py    # Audio conversion and management
 │   ├── data_service.py     # Excel data operations
-│   └── config_service.py   # API key management
+│   ├── config_service.py   # API key management
+│   ├── transcription_service.py # Audio transcription handling
+│   └── audio_splitter.py   # Audio segment management
 ├── ui/
 │   ├── video_card.py       # Video display component
 │   └── results_display.py  # Results and pagination
 ├── data/
 │   ├── downloaded/         # Downloaded MP3 files
-│   └── converted/          # Converted OGG files
+│   ├── converted/          # Converted OGG files
+│   ├── transcriptions/     # Transcription Excel files
+│   └── splits/            # Split audio segments
 ├── requirements.txt        # Dependencies
 └── .env                    # Configuration (optional)
 ```
@@ -113,6 +127,8 @@ ytaudiodownloader/
 - pandas
 - openpyxl
 - pydub
+- whisper
+- ffmpeg-python
 
 ## Contributing
 
@@ -128,6 +144,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Version History
 
+- v1.5.0: Added audio transcription and segment splitting features
 - v1.4.0: Added thumbnails, audio conversion, and in-app API key management
 - v1.3.0: Added audio format conversion and improved UI
 - v1.2.0: Added thumbnail preview and enhanced metadata display
