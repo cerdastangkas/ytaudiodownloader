@@ -75,8 +75,10 @@ with st.sidebar:
 
 # Function to get downloaded videos
 def get_downloaded_videos():
-    excel_file = 'youtube_videos.xlsx'
-    downloaded_dir = os.path.join('data', 'downloaded')
+    data_dir = Path('data')
+    data_dir.mkdir(exist_ok=True)
+    excel_file = data_dir / 'youtube_videos.xlsx'
+    downloaded_dir = data_dir / 'downloaded'
     
     try:
         # Create directories if they don't exist
@@ -190,51 +192,49 @@ def display_downloaded_file(file_info, col):
         file_size = os.path.getsize(file_info['file_path']) / (1024 * 1024)
         st.markdown(f"**Size:** {file_size:.1f} MB")
         
-        col1, col2 = st.columns(2)
+        # Check if transcription exists
+        existing_transcription = transcription_service.get_transcription(file_info['id'])
         
-        with col1:
-            # Check if transcription exists
-            existing_transcription = transcription_service.get_transcription(file_info['id'])
-            
-            if existing_transcription:
-                st.success("✅ Transcription available")
-            elif ogg_file:
-                if st.button("🎯 Transcribe", key=f"transcribe_{file_info['id']}"):
-                    with st.spinner("Transcribing audio... This may take a while."):
-                        success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
-                        if success:
-                            st.success("✅ Transcription complete!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Transcription failed: {result}")
-            else:
-                if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
-                    with st.spinner("Converting to OGG format..."):
-                        success, result = audio_service.convert_to_ogg(file_info['file_path'])
-                        if success:
-                            st.success("✅ Conversion successful!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Conversion failed: {result}")
-        
-        with col2:
-            if st.button(f"🗑️ Delete", key=f"delete_{file_info['id']}"):
-                try:
-                    os.remove(file_info['file_path'])
-                    if ogg_file:
-                        os.remove(ogg_file)
-                    transcription_path = transcription_service.get_excel_path(file_info['id'])
-                    if os.path.exists(transcription_path):
-                        os.remove(transcription_path)
-                    splits_dir = audio_splitter.get_splits_directory(file_info['id'])
-                    if splits_dir.exists():
-                        for split_file in splits_dir.glob('*.ogg'):
-                            os.remove(split_file)
-                        os.rmdir(splits_dir)
-                    st.success("File deleted successfully!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error deleting file: {str(e)}")
+        if existing_transcription:
+            st.success("✅ Transcription available")            
+            if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}") :
+                st.switch_page("pages/3_📝_Transcriptions.py")
+        elif ogg_file:
+            if st.button("🎯 Transcribe", key=f"transcribe_{file_info['id']}"):
+                with st.spinner("Transcribing audio... This may take a while."):
+                    success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
+                    if success:
+                        st.success("✅ Transcription complete!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Transcription failed: {result}")
+        else:
+            if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
+                with st.spinner("Converting to OGG format..."):
+                    success, result = audio_service.convert_to_ogg(file_info['file_path'])
+                    if success:
+                        st.success("✅ Conversion successful!")
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Conversion failed: {result}")
+
+        if st.button(f"🗑️ Delete", key=f"delete_{file_info['id']}"):
+            try:
+                os.remove(file_info['file_path'])
+                if ogg_file:
+                    os.remove(ogg_file)
+                transcription_path = transcription_service.get_excel_path(file_info['id'])
+                if os.path.exists(transcription_path):
+                    os.remove(transcription_path)
+                splits_dir = audio_splitter.get_splits_directory(file_info['id'])
+                if splits_dir.exists():
+                    for split_file in splits_dir.glob('*.ogg'):
+                        os.remove(split_file)
+                    os.rmdir(splits_dir)
+                st.success("File deleted successfully!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Error deleting file: {str(e)}")
         
         st.markdown("---")
 

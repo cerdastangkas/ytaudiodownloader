@@ -9,9 +9,9 @@ class DataService:
     def __init__(self):
         """Initialize the data service."""
         self.data_dir = Path('data')
-        self.data_dir.mkdir(parents=True, exist_ok=True)
+        self.data_dir.mkdir(exist_ok=True)
         self.downloads_file = self.data_dir / 'downloads.json'
-        self.videos_excel = 'youtube_videos.xlsx'
+        self.videos_excel = self.data_dir / 'youtube_videos.xlsx'
         
         # Create downloads file if it doesn't exist
         if not self.downloads_file.exists():

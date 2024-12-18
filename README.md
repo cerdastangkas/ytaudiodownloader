@@ -4,6 +4,7 @@ A streamlined Streamlit application for searching and downloading audio from You
 
 ## Features
 
+### Main Features
 - 🔍 Search YouTube videos with custom queries
 - 📜 Filter videos by license type
 - ⏱️ Duration-based filtering (>3 minutes)
@@ -12,6 +13,8 @@ A streamlined Streamlit application for searching and downloading audio from You
 - 🎯 Transcribe audio to text with timestamps
 - ✂️ Split audio into segments based on transcription
 - 📝 View and manage transcriptions with audio segments
+
+### Additional Features
 - 🖼️ Thumbnail previews for videos and downloaded files
 - 📊 Progress tracking for downloads
 - 📑 Export video details to Excel
