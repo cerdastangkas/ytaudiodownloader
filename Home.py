@@ -11,6 +11,8 @@ if 'youtube_api_key' not in st.session_state:
     st.session_state.youtube_api_key = os.getenv('YOUTUBE_API_KEY', '')
 if 'openai_api_key' not in st.session_state:
     st.session_state.openai_api_key = os.getenv('OPENAI_API_KEY', '')
+if 'data_dir' not in st.session_state:
+    st.session_state.data_dir = os.getenv('DATA_DIR', '')
 
 # Initialize services with session state API key
 youtube_service = YouTubeService(st.session_state.youtube_api_key)
@@ -113,12 +115,12 @@ with st.sidebar:
             if new_youtube_key.startswith('AIza'):
                 st.session_state.youtube_api_key = new_youtube_key
                 youtube_service = YouTubeService(new_youtube_key)
-                st.success("✅ API key updated successfully")
-                st.rerun()
+                # st.rerun()
+                st.success("✅ YouTube API key updated successfully")
             else:
                 st.error("❌ Invalid YouTube API key format")
         else:
-            st.error("❌ API key cannot be empty")
+            st.error("❌ YouTube API key cannot be empty")
     
     st.markdown("---")
     
@@ -135,11 +137,30 @@ with st.sidebar:
         if new_openai_key:
             if new_openai_key.startswith('sk-'):
                 st.session_state.openai_api_key = new_openai_key
-                st.success("✅ API key updated successfully")
+                st.success("✅ OPENAI API key updated successfully")
             else:
                 st.error("❌ Invalid OpenAI API key format")
         else:
-            st.error("❌ API key cannot be empty")
+            st.error("❌ OPENAI API key cannot be empty")
+
+    st.markdown("---")
+        
+    # Data Directory
+    st.subheader("Data Directory")
+    new_data_dir = st.text_input(
+        "Data Directory",
+        value=st.session_state.data_dir,
+        help="Enter the path to the data directory"
+    )
+    
+    if st.button("Apply Data Directory"):
+        if new_data_dir:
+            st.session_state.data_dir = new_data_dir
+        else:
+            st.error("❌ Data directory cannot be empty")
+        
+        if st.session_state.data_dir:
+            st.success("✅ Data directory updated successfully")
     
     st.markdown("---")
     st.markdown("""

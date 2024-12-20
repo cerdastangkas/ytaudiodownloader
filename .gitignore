@@ -36,7 +36,7 @@ env/
 # Project specific
 data/
 data/downloaded/
-youtube_videos.xlsx
+data/youtube_videos.xlsx
 
 # Logs
 *.log

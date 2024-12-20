@@ -65,6 +65,6 @@ display_search_results(youtube_service)
 
 # Auto-save to Excel if there are search results
 if st.session_state.all_videos:
-    excel_file = 'youtube_videos.xlsx'
+    excel_file = f"{st.session_state.data_dir}/youtube_videos.xlsx"
     total_saved = data_service.save_videos_to_excel(st.session_state.all_videos, excel_file)
     st.info(f'💾 {total_saved} videos saved to database')

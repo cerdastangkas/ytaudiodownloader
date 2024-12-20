@@ -6,9 +6,9 @@ from datetime import datetime
 import streamlit as st
 
 class DataService:
-    def __init__(self):
+    def __init__(self, data_dir='data'):
         """Initialize the data service."""
-        self.data_dir = Path('data')
+        self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
         self.downloads_file = self.data_dir / 'downloads.json'
         self.videos_excel = self.data_dir / 'youtube_videos.xlsx'
@@ -56,7 +56,7 @@ class DataService:
         # If no downloads found, reconstruct from files
         if not downloads:
             downloads = []
-            downloaded_dir = Path('data/downloaded')
+            downloaded_dir = self.data_dir / 'downloaded'
             if downloaded_dir.exists():
                 for file in downloaded_dir.glob('*.mp3'):
                     video_id = file.stem  # Get filename without extension
@@ -181,10 +181,10 @@ class DataService:
             initial_count = len(df)
             
             # Get list of downloaded files
-            if not Path('data/downloaded').exists():
+            if not (self.data_dir / 'downloaded').exists():
                 return initial_count, 0
             
-            downloaded_files = list(Path('data/downloaded').glob('*.mp3'))
+            downloaded_files = list((self.data_dir / 'downloaded').glob('*.mp3'))
             downloaded_ids = [f.stem for f in downloaded_files]
             
             # Filter DataFrame to keep only downloaded files

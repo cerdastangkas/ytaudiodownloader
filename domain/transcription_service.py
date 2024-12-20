@@ -5,11 +5,12 @@ import pandas as pd
 from datetime import datetime
 
 class TranscriptionService:
-    def __init__(self, model_name='medium'):
+    def __init__(self, data_dir='data', model_name='medium'):
         """Initialize the transcription service with the specified model."""
         self.model_name = model_name
         self.model = None
-        self.transcriptions_dir = Path('data/transcriptions')
+        self.data_dir = Path(data_dir)
+        self.transcriptions_dir = self.data_dir / 'transcriptions'
         self.transcriptions_dir.mkdir(parents=True, exist_ok=True)
     
     def load_model(self):
