@@ -141,10 +141,14 @@ class TranscriptionService:
         segments_data = []
         for segment in transcription_data['segments']:
             segments_data.append({
-                'start_time': segment['start'],
-                'end_time': segment['end'],
+                'video_id': video_id,
+                'audio_path': transcription_data['audio_path'],
+                'start_time_seconds': segment['start'],
+                'end_time_seconds': segment['end'],
+                'duration_seconds': segment['end'] - segment['start'],
                 'text': segment['text'].strip(),
-                'language': transcription_data['language']
+                'language': transcription_data['language'],
+                'timestamp': transcription_data['timestamp']
             })
         
         # Create DataFrame with segments
@@ -152,18 +156,8 @@ class TranscriptionService:
         
         # Create a writer object
         with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            # Write segments to 'Segments' sheet
-            segments_df.to_excel(writer, sheet_name='Segments', index=False)
-            
-            # Write metadata to 'Metadata' sheet
-            metadata = pd.DataFrame([{
-                'video_id': transcription_data['video_id'],
-                'audio_path': transcription_data['audio_path'],
-                'language': transcription_data['language'],
-                'timestamp': transcription_data['timestamp'],
-                'full_text': transcription_data['full_text']
-            }])
-            metadata.to_excel(writer, sheet_name='Metadata', index=False)
+            # Write segments to single sheet
+            segments_df.to_excel(writer, sheet_name='Transcription', index=False)
     
     def get_transcription(self, video_id):
         """Get transcription data for a specific video."""
@@ -173,9 +167,36 @@ class TranscriptionService:
             return None
         
         try:
-            # Read segments from Excel
-            segments_df = pd.read_excel(excel_path, sheet_name='Segments')
-            return segments_df.to_dict('records')
+            # Try reading from new format first
+            try:
+                segments_df = pd.read_excel(excel_path, sheet_name='Transcription')
+                return segments_df.to_dict('records')
+            except ValueError:  # Sheet not found, try old format
+                # Read from old format
+                segments_df = pd.read_excel(excel_path, sheet_name='Segments')
+                metadata_df = pd.read_excel(excel_path, sheet_name='Metadata')
+                
+                # Convert to new format
+                segments_data = []
+                for _, segment in segments_df.iterrows():
+                    segments_data.append({
+                        'video_id': metadata_df['video_id'].iloc[0],
+                        'audio_path': metadata_df['audio_path'].iloc[0],
+                        'start_time_seconds': segment['start_time'],
+                        'end_time_seconds': segment['end_time'],
+                        'duration_seconds': segment['end_time'] - segment['start_time'],
+                        'text': segment['text'],
+                        'language': segment['language'],
+                        'timestamp': metadata_df['timestamp'].iloc[0]
+                    })
+                
+                # Save in new format for future use
+                new_df = pd.DataFrame(segments_data)
+                with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                    new_df.to_excel(writer, sheet_name='Transcription', index=False)
+                
+                return segments_data
+                
         except Exception as e:
             print(f"Error reading transcription: {e}")
             return None

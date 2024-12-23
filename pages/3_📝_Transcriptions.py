@@ -1,171 +1,106 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from domain.data_service import DataService
 from domain.transcription_service import TranscriptionService
-from domain.audio_service import AudioService
 from domain.audio_splitter import AudioSplitter
+from domain.data_service import DataService
+from domain.config_service import ConfigService
 
 # Page config
-st.set_page_config(page_title="Transcriptions", page_icon="📝", layout="wide")
+st.set_page_config(
+    page_title="Transcriptions",
+    page_icon="📝",
+    layout="wide"
+)
 
-# Custom CSS
-st.markdown("""
-    <style>
-    .main {
-        padding: 0 1rem;
-        max-width: 1200px;
-        margin: 0 auto;
-    }
-    .title-container {
-        padding: 1rem 0;
-        margin-bottom: 1.5rem;
-        text-align: center;
-    }
-    .stButton button {
-        background-color: #1a73e8;
-        color: white;
-        border: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-    }
-    .segment-container {
-        padding: 0.25rem 0;
-        margin-bottom: 0.25rem;
-    }
-    .timestamp {
-        font-weight: 500;
-    }
-    .text-content {
-        line-height: 1.4;
-        margin: 0.25rem 0;
-    }
-    .controls-container {
-        padding: 0.5rem 0;
-        margin-bottom: 0.75rem;
-    }
-    .video-title {
-        font-size: 1.25rem;
-        font-weight: 500;
-        margin-bottom: 0.75rem;
-    }
-    div[data-testid="stExpander"] {
-        margin-bottom: 1rem;
-    }
-    </style>
-""", unsafe_allow_html=True)
+# Title
+st.title("📝 Transcription Viewer")
 
-# Title with gradient background
-st.markdown("""
-    <div class="title-container">
-        <h1>📝 Audio Transcriptions</h1>
-        <p>View and manage your transcribed audio content</p>
-    </div>
-""", unsafe_allow_html=True)
-
-# Check for API key
-if 'openai_api_key' not in st.session_state or not st.session_state.openai_api_key:
-    st.error("⚠️ Please set your OpenAI API key in the main page first!")
+# Check if API key is set
+if 'openai_api_key' not in st.session_state:
+    st.error("⚠️ OpenAI API key not found. Please set it in the Home page.")
     st.stop()
 
 # Initialize services
-data_service = DataService()
 transcription_service = TranscriptionService(api_key=st.session_state.openai_api_key)
-audio_service = AudioService()
 audio_splitter = AudioSplitter()
+data_service = DataService()
 
-# Get all downloaded videos and filter for ones with transcriptions
-downloaded_videos = data_service.get_downloaded_videos()
-transcribed_videos = []
+# Check if video ID is in session state
+if 'selected_video_id' not in st.session_state:
+    st.warning("⚠️ No transcription selected. Please select a transcription from the Downloaded page.")
+    st.stop()
 
-for video in downloaded_videos:
-    if transcription_service.get_transcription(video['id']) is not None:
-        transcribed_videos.append(video)
+video_id = st.session_state['selected_video_id']
 
-if not transcribed_videos:
-    st.info("🎵 No transcribed videos found. Go to the Downloads page to transcribe some videos!")
-else:
-    # Create sections for each transcribed video
-    for video in transcribed_videos:
-        video_id = video['id']
-        transcription = transcription_service.get_transcription(video_id)
+# Get video info
+video_info = data_service.get_video_info(video_id)
+if video_info:
+    # Create two columns for thumbnail and info
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        # Display thumbnail if available
+        if 'thumbnail' in video_info and video_info['thumbnail']:
+            st.image(video_info['thumbnail'], use_container_width=True)
+    
+    with col2:
+        # Display video info
+        st.header(f"🎥 {video_info.get('title', 'Untitled Video')}")
+        if 'channel_title' in video_info:
+            st.markdown(f"**Channel**: {video_info['channel_title']}")
+        if 'duration' in video_info:
+            st.markdown(f"**Duration**: {video_info['duration']}")
+        if 'view_count' in video_info and video_info['view_count']:
+            st.markdown(f"**Views**: {video_info['view_count']:,}")
+        if 'like_count' in video_info and video_info['like_count']:
+            st.markdown(f"**Likes**: {video_info['like_count']:,}")
+        if 'published_at' in video_info:
+            st.markdown(f"**Published**: {video_info['published_at']}")
         
-        if transcription:
-            with st.expander(f"🎵 {video['title']}", expanded=True):
-                # Check if audio needs to be split
-                is_split = audio_splitter.is_already_split(video_id)
-                
-                if not is_split:
-                    st.markdown('<div class="controls-container">', unsafe_allow_html=True)
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        output_format = st.selectbox(
-                            "🎵 Output Format",
-                            ["mp3", "ogg"],
-                            key=f"format_{video_id}"
-                        )
-                    with col2:
-                        ogg_file = audio_service.get_converted_file(video_id)
-                        if st.button("✂️ Split Audio", key=f"split_{video_id}"):
-                            if ogg_file:
-                                with st.spinner("🎵 Splitting audio into segments..."):
-                                    success, result = audio_splitter.split_audio(
-                                        ogg_file,
-                                        video_id,
-                                        transcription_service.get_excel_path(video_id),
-                                        output_format=output_format
-                                    )
-                                    if success:
-                                        st.success("✅ Audio split successfully!")
-                                        st.rerun()
-                                    else:
-                                        st.error(f"❌ Splitting failed: {result}")
-                            else:
-                                st.error("⚠️ Please convert the audio to OGG format first")
-                    st.markdown('</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="controls-container">', unsafe_allow_html=True)
-                    col1, col2 = st.columns([2, 1])
-                    with col1:
-                        output_format = st.selectbox(
-                            "🎵 Output Format",
-                            ["mp3", "ogg"],
-                            key=f"format_{video_id}"
-                        )
-                    with col2:
-                        if st.button("🔄 Re-split Audio", key=f"resplit_{video_id}"):
-                            ogg_file = audio_service.get_converted_file(video_id)
-                            with st.spinner("🎵 Re-splitting audio into segments..."):
-                                success, result = audio_splitter.split_audio(
-                                    ogg_file,
-                                    video_id,
-                                    transcription_service.get_excel_path(video_id),
-                                    output_format=output_format
-                                )
-                                if success:
-                                    st.success("✅ Audio re-split successfully!")
-                                    st.rerun()
-                                else:
-                                    st.error(f"❌ Splitting failed: {result}")
-                    st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Display transcription with audio segments
-                splits = audio_splitter.get_splits(video_id, transcription_service.get_excel_path(video_id))
-                split_dict = {split['segment_index']: split for split in splits} if splits else {}
-                
-                for idx, segment in enumerate(transcription, 1):
-                    st.markdown(f'<div class="segment-container">', unsafe_allow_html=True)
-                    st.markdown(
-                        f"""
-                        <div class="timestamp">🕒 Segment {idx} [{segment['start_time']:.1f}s - {segment['end_time']:.1f}s]</div>
-                        <div class="text-content">{segment['text']}</div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-                    # Add audio player if split exists
-                    if idx-1 in split_dict:
-                        try:
-                            st.audio(split_dict[idx-1]['audio_file'])
-                        except Exception as e:
-                            st.error(f"⚠️ Error loading audio segment {idx}")
-                    st.markdown('</div>', unsafe_allow_html=True)
+        # Add YouTube link
+        st.markdown(f"🔗 [Watch on YouTube](https://youtu.be/{video_id})")
+
+st.divider()
+
+splits = audio_splitter.get_splits(video_id, transcription_service.get_excel_path(video_id))
+
+if not splits:
+    st.error("❌ No audio segments found for this transcription.")
+    st.stop()
+
+# Initialize expanded states in session state if not exists
+if 'expanded_segments' not in st.session_state:
+    st.session_state.expanded_segments = {}
+
+for idx, split in enumerate(splits, 1):
+    # Create a unique key for this segment
+    segment_key = f"segment_{st.session_state.selected_video_id}_{idx}"
+    
+    # Initialize expanded state if not exists
+    if segment_key not in st.session_state.expanded_segments:
+        st.session_state.expanded_segments[segment_key] = False
+    
+    # Create expander
+    with st.expander(f"🎵 - 📝 Segment {idx}"):
+        st.markdown(f"**Time**: {split['start_time_seconds']:.2f}s - {split['end_time_seconds']:.2f}s")
+        st.markdown(split['text'])
+        
+        # Add checkbox to load audio
+        load_audio = st.checkbox("🎵 Load Audio Player", key=f"load_{segment_key}")
+        
+        # Only load audio if checkbox is checked
+        if load_audio:
+            # Audio player
+            st.audio(split['audio_file'])
+            # Show segment duration
+            st.caption(f"Duration: {split['duration_seconds']:.2f} seconds")
+
+# Add a back button
+if st.button("← Back to Downloads"):
+    # Clear the session states
+    if 'selected_video_id' in st.session_state:
+        del st.session_state['selected_video_id']
+    if 'expanded_segments' in st.session_state:
+        del st.session_state['expanded_segments']
+    st.switch_page("pages/2_📂_Downloaded.py")

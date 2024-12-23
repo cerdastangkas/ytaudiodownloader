@@ -37,59 +37,32 @@ class DataService:
                 df = pd.read_excel(self.videos_excel)
                 video_info = df[df['id'] == video_id]
                 if not video_info.empty:
-                    return {
-                        'id': video_id,
-                        'title': video_info['title'].iloc[0],
-                        'channel_title': video_info['channel_title'].iloc[0],
-                        'duration': video_info['duration'].iloc[0],
-                        'published_at': video_info['published_at'].iloc[0]
-                    }
+                    # Convert the row to a dictionary
+                    info_dict = video_info.iloc[0].to_dict()
+                    # Clean up NaN values
+                    return {k: v for k, v in info_dict.items() if pd.notna(v)}
         except Exception as e:
             print(f"Error reading Excel: {str(e)}")
         return None
     
+    def get_video_info(self, video_id):
+        """Get video information from Excel file."""
+        return self._get_video_info_from_excel(video_id)
+    
     def get_downloaded_videos(self):
-        """Get list of all downloaded videos."""
-        # First try to load from downloads.json
-        downloads = self._load_downloads()
-        
-        # If no downloads found, reconstruct from files
-        if not downloads:
-            downloads = []
-            downloaded_dir = self.data_dir / 'downloaded'
-            if downloaded_dir.exists():
-                for file in downloaded_dir.glob('*.mp3'):
-                    video_id = file.stem  # Get filename without extension
-                    
-                    # Try to get video info from Excel
-                    video_info = self._get_video_info_from_excel(video_id)
-                    
-                    if video_info:
-                        video_info['file_path'] = str(file)
-                        downloads.append(video_info)
-                    else:
-                        # Fallback to basic info if not found in Excel
-                        downloads.append({
-                            'id': video_id,
-                            'title': f'Video {video_id}',  # Default title
-                            'file_path': str(file),
-                            'duration': '00:00',  # Default duration
-                        })
-                # Save reconstructed downloads
-                self._save_downloads(downloads)
-        
-        # Filter out entries where file doesn't exist
-        valid_downloads = []
-        for download in downloads:
-            if os.path.exists(download['file_path']):
-                # Try to update title from Excel if it's using default
-                if download['title'].startswith('Video '):
-                    video_info = self._get_video_info_from_excel(download['id'])
-                    if video_info:
-                        download.update(video_info)
-                valid_downloads.append(download)
-        
-        return valid_downloads
+        """Get list of all downloaded videos from Excel."""
+        try:
+            if os.path.exists(self.videos_excel):
+                df = pd.read_excel(self.videos_excel)
+                # Convert DataFrame to list of dictionaries, removing NaN values
+                videos = []
+                for _, row in df.iterrows():
+                    video_dict = {k: v for k, v in row.to_dict().items() if pd.notna(v)}
+                    videos.append(video_dict)
+                return videos
+        except Exception as e:
+            print(f"Error reading Excel: {str(e)}")
+        return []
     
     def add_download(self, video_info, file_path):
         """Add a new download entry."""

@@ -6,6 +6,7 @@ from domain.data_service import DataService
 from domain.audio_service import AudioService
 from domain.transcription_service import TranscriptionService
 from domain.audio_splitter import AudioSplitter
+from domain.config_service import ConfigService
 import math
 from pathlib import Path
 import datetime
@@ -25,6 +26,7 @@ if 'openai_api_key' not in st.session_state or not st.session_state.openai_api_k
     st.stop()
 
 # Initialize services
+config_service = ConfigService()
 youtube_service = YouTubeService(os.getenv('YOUTUBE_API_KEY'))
 data_service = DataService()
 audio_service = AudioService()
@@ -202,9 +204,7 @@ def display_downloaded_file(file_info, col):
         existing_transcription = transcription_service.get_transcription(file_info['id'])
         
         if existing_transcription:
-            st.success("✅ Transcription available")            
-            if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}"):
-                st.switch_page("pages/3_📝_Transcriptions.py")
+            st.success("✅ Transcription available")
             
             # Check if audio is already split
             has_splits = audio_splitter.is_already_split(file_info['id'])
@@ -224,6 +224,10 @@ def display_downloaded_file(file_info, col):
                             st.error(f"❌ Failed to split audio: {result}")
             else:
                 st.info("✅ Audio already split into segments")
+            
+            if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}"):
+                st.session_state['selected_video_id'] = file_info['id']
+                st.switch_page("pages/3_📝_Transcriptions.py")
                 
         elif ogg_file:
             if st.button("🎯 Transcribe", key=f"transcribe_{file_info['id']}"):
@@ -231,21 +235,22 @@ def display_downloaded_file(file_info, col):
                     success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
                     if success:
                         st.success("✅ Transcription complete!")
-                        # Automatically split audio after successful transcription
-                        with st.spinner("Splitting audio into segments..."):
-                            split_success, split_result = audio_splitter.split_audio(
-                                file_info['file_path'],
-                                file_info['id'],
-                                transcription_service.get_excel_path(file_info['id']),
-                                'wav'  # Use WAV format for high quality
-                            )
-                            if split_success:
-                                st.success("✅ Audio split successfully!")
-                            else:
-                                st.warning(f"⚠️ Audio split failed: {split_result}")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Transcription failed: {result}")
+                
+                if success:  # Only attempt splitting if transcription was successful
+                    with st.spinner("Splitting audio into segments..."):
+                        split_success, split_result = audio_splitter.split_audio(
+                            file_info['file_path'],
+                            file_info['id'],
+                            transcription_service.get_excel_path(file_info['id']),
+                            'wav'  # Use WAV format for high quality
+                        )
+                        if split_success:
+                            st.success("✅ Audio split successfully!")
+                        else:
+                            st.warning(f"⚠️ Audio split failed: {split_result}")
+                    st.rerun()
+                else:
+                    st.error(f"❌ Transcription failed: {result}")
         else:
             if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
                 with st.spinner("Converting to OGG format..."):

@@ -25,35 +25,28 @@ class AudioSplitter:
     def get_splits(self, video_id, transcription_path):
         """Get information about splits for a video."""
         try:
-            splits_df = pd.read_excel(transcription_path, sheet_name='Splits')
-            splits = splits_df.to_dict('records')
+            try:
+                # Try new format first
+                transcription_df = pd.read_excel(transcription_path, sheet_name='Transcription')
+            except ValueError:  # Sheet not found, try old format
+                splits_df = pd.read_excel(transcription_path, sheet_name='Splits')
+                if not splits_df.empty:
+                    return splits_df.to_dict('records')
+                return []
+                
+            splits = transcription_df.to_dict('records')
             
             # Filter out splits where audio file doesn't exist
             valid_splits = []
             for split in splits:
-                if os.path.exists(split['audio_file']):
+                if 'audio_file' in split and os.path.exists(split['audio_file']):
                     valid_splits.append(split)
-                else:
-                    # Try to find the file with a different extension
-                    base_path = os.path.splitext(split['audio_file'])[0]
-                    mp3_path = f"{base_path}.mp3"
-                    ogg_path = f"{base_path}.ogg"
-                    wav_path = f"{base_path}.wav"
-                    
-                    if os.path.exists(mp3_path):
-                        split['audio_file'] = mp3_path
-                        valid_splits.append(split)
-                    elif os.path.exists(ogg_path):
-                        split['audio_file'] = ogg_path
-                        valid_splits.append(split)
-                    elif os.path.exists(wav_path):
-                        split['audio_file'] = wav_path
-                        valid_splits.append(split)
             
-            return valid_splits if valid_splits else None
+            return valid_splits
             
-        except Exception:
-            return None
+        except Exception as e:
+            print(f"Error getting splits: {e}")
+            return []
     
     def split_audio(self, audio_path, video_id, transcription_path, output_format='wav'):
         """Split audio file based on transcription segments.
@@ -65,8 +58,27 @@ class AudioSplitter:
             output_format: Format to save split files in ('wav' recommended for high quality)
         """
         try:
-            # Read transcription data
-            segments_df = pd.read_excel(transcription_path, sheet_name='Segments')
+            # Read transcription data - handle both old and new formats
+            try:
+                transcription_df = pd.read_excel(transcription_path, sheet_name='Transcription')
+            except ValueError:  # Sheet not found, try old format
+                segments_df = pd.read_excel(transcription_path, sheet_name='Segments')
+                metadata_df = pd.read_excel(transcription_path, sheet_name='Metadata')
+                
+                # Convert to new format
+                segments_data = []
+                for _, segment in segments_df.iterrows():
+                    segments_data.append({
+                        'video_id': metadata_df['video_id'].iloc[0],
+                        'audio_path': metadata_df['audio_path'].iloc[0],
+                        'start_time_seconds': segment['start_time'],
+                        'end_time_seconds': segment['end_time'],
+                        'duration_seconds': segment['end_time'] - segment['start_time'],
+                        'text': segment['text'],
+                        'language': segment['language'],
+                        'timestamp': metadata_df['timestamp'].iloc[0]
+                    })
+                transcription_df = pd.DataFrame(segments_data)
             
             # Load audio file
             audio = AudioSegment.from_file(audio_path)
@@ -84,10 +96,10 @@ class AudioSplitter:
             
             # Process each segment
             split_info = []
-            for idx, segment in segments_df.iterrows():
+            for idx, segment in transcription_df.iterrows():
                 # Convert times to milliseconds
-                start_ms = int(segment['start_time'] * 1000)
-                end_ms = int(segment['end_time'] * 1000)
+                start_ms = int(segment['start_time_seconds'] * 1000)
+                end_ms = int(segment['end_time_seconds'] * 1000)
                 
                 # Extract segment
                 segment_audio = audio[start_ms:end_ms]
@@ -120,14 +132,16 @@ class AudioSplitter:
                     
                     # Only add to split_info if export was successful
                     split_info.append({
-                        'segment_index': idx,
-                        'start_time': segment['start_time'],
-                        'end_time': segment['end_time'],
-                        'text': segment['text'],
-                        'audio_file': str(output_path),
-                        'duration': (end_ms - start_ms) / 1000,  # Duration in seconds
+                        'video_id': video_id,
                         'filename': filename,
-                        'relative_path': str(output_path.relative_to(self.splits_dir))
+                        'relative_path': str(output_path.relative_to(self.splits_dir)),
+                        'audio_file': str(output_path),
+                        'start_time_seconds': segment['start_time_seconds'],
+                        'end_time_seconds': segment['end_time_seconds'],
+                        'duration_seconds': segment['duration_seconds'],
+                        'text': segment['text'],
+                        'language': segment['language'],
+                        'timestamp': segment['timestamp']
                     })
                 except Exception as e:
                     print(f"Error exporting segment {idx}: {e}")
@@ -139,21 +153,23 @@ class AudioSplitter:
             # Update Excel file with split information
             splits_df = pd.DataFrame(split_info)
             
+            try:
+                # Read existing Excel file
+                with pd.ExcelFile(transcription_path) as xls:
+                    transcription_df = pd.read_excel(xls, sheet_name='Transcription')
+            except Exception as e:
+                print(f"Error reading existing Excel file: {e}")
+                transcription_df = pd.DataFrame()
+            
             # Create a new Excel writer
-            with pd.ExcelWriter(transcription_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
-                # Write splits information to 'Splits' sheet
-                splits_df.to_excel(writer, sheet_name='Splits', index=False)
+            with pd.ExcelWriter(transcription_path, engine='openpyxl') as writer:
+                # Update transcription data with split information
+                transcription_df['filename'] = splits_df['filename']
+                transcription_df['relative_path'] = splits_df['relative_path']
+                transcription_df['audio_file'] = splits_df['audio_file']
                 
-                # Create a mapping sheet with filename and text
-                mapping_df = pd.DataFrame({
-                    'filename': splits_df['filename'],
-                    'relative_path': splits_df['relative_path'],
-                    'duration': splits_df['duration'],
-                    'text': splits_df['text'],
-                    'start_time': splits_df['start_time'],
-                    'end_time': splits_df['end_time']
-                })
-                mapping_df.to_excel(writer, sheet_name='AudioTextMapping', index=False)
+                # Write updated transcription data
+                transcription_df.to_excel(writer, sheet_name='Transcription', index=False)
             
             return True, f"Split {len(split_info)} segments successfully"
             
