@@ -19,11 +19,16 @@ st.set_page_config(
     layout='wide'
 )
 
+# Check for API key
+if 'openai_api_key' not in st.session_state or not st.session_state.openai_api_key:
+    st.error("⚠️ Please set your OpenAI API key in the main page first!")
+    st.stop()
+
 # Initialize services
 youtube_service = YouTubeService(os.getenv('YOUTUBE_API_KEY'))
 data_service = DataService()
 audio_service = AudioService()
-transcription_service = TranscriptionService()
+transcription_service = TranscriptionService(api_key=st.session_state.openai_api_key)
 audio_splitter = AudioSplitter()
 
 # Custom CSS
@@ -176,6 +181,7 @@ def display_downloaded_file(file_info, col):
             st.image(file_info['thumbnail'], width=None)
         
         st.markdown(f"### {file_info['title']}")
+        st.markdown(f"**Video ID:** {file_info['id']}")
         st.markdown(f"**Channel:** {file_info['channel_title']}")
         st.markdown(f"**Duration:** {file_info['duration']}")
         
@@ -197,14 +203,46 @@ def display_downloaded_file(file_info, col):
         
         if existing_transcription:
             st.success("✅ Transcription available")            
-            if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}") :
+            if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}"):
                 st.switch_page("pages/3_📝_Transcriptions.py")
+            
+            # Check if audio is already split
+            has_splits = audio_splitter.is_already_split(file_info['id'])
+            if not has_splits:
+                if st.button("✂️ Split Audio", key=f"split_audio_{file_info['id']}"):
+                    with st.spinner("Splitting audio based on transcription..."):
+                        success, result = audio_splitter.split_audio(
+                            file_info['file_path'], 
+                            file_info['id'],
+                            transcription_service.get_excel_path(file_info['id']),
+                            'wav'  # Use WAV format for high quality
+                        )
+                        if success:
+                            st.success("✅ Audio split successfully!")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ Failed to split audio: {result}")
+            else:
+                st.info("✅ Audio already split into segments")
+                
         elif ogg_file:
             if st.button("🎯 Transcribe", key=f"transcribe_{file_info['id']}"):
                 with st.spinner("Transcribing audio... This may take a while."):
                     success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
                     if success:
                         st.success("✅ Transcription complete!")
+                        # Automatically split audio after successful transcription
+                        with st.spinner("Splitting audio into segments..."):
+                            split_success, split_result = audio_splitter.split_audio(
+                                file_info['file_path'],
+                                file_info['id'],
+                                transcription_service.get_excel_path(file_info['id']),
+                                'wav'  # Use WAV format for high quality
+                            )
+                            if split_success:
+                                st.success("✅ Audio split successfully!")
+                            else:
+                                st.warning(f"⚠️ Audio split failed: {split_result}")
                         st.rerun()
                     else:
                         st.error(f"❌ Transcription failed: {result}")
@@ -271,7 +309,7 @@ else:
         # Page indicator
         with cols[1]:
             st.markdown(
-                f'<div class="pagination-text">Page {st.session_state.downloaded_page} of {total_pages}</div>',
+                f'<div style="text-align: center;">Page {st.session_state.downloaded_page} of {total_pages}</div>',
                 unsafe_allow_html=True
             )
         

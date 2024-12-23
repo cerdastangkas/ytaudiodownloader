@@ -1,9 +1,11 @@
 from googleapiclient.discovery import build
+from pathlib import Path
 
 class YouTubeService:
     def __init__(self, api_key):
         self.api_key = api_key
         self.youtube_client = None
+        self.download_dir = Path(__file__).parent.parent / 'data' / 'downloaded'
         
     def get_youtube_client(self):
         """Lazy initialization of YouTube API client"""
@@ -135,6 +137,10 @@ class YouTubeService:
                 'success': False,
                 'error': str(e)
             }
+
+    def get_audio_path(self, video_id):
+        """Get the path to the downloaded audio file"""
+        return str(self.download_dir / f"{video_id}.mp3")
 
     def is_audio_downloaded(self, video_id):
         """Check if audio for this video is already downloaded"""

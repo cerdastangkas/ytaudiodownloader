@@ -63,9 +63,14 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# Check for API key
+if 'openai_api_key' not in st.session_state or not st.session_state.openai_api_key:
+    st.error("⚠️ Please set your OpenAI API key in the main page first!")
+    st.stop()
+
 # Initialize services
 data_service = DataService()
-transcription_service = TranscriptionService()
+transcription_service = TranscriptionService(api_key=st.session_state.openai_api_key)
 audio_service = AudioService()
 audio_splitter = AudioSplitter()
 

@@ -1,9 +1,13 @@
 import streamlit as st
 from domain.youtube_service import YouTubeService
+from domain.audio_service import AudioService
 from utils.date_formatter import format_published_date
 
 def display_video_card(video: dict, youtube_service: YouTubeService):
     """Display a single video card with download functionality"""
+    # Initialize audio service
+    audio_service = AudioService()
+    
     with st.container():
         # Thumbnail
         if 'thumbnail' in video:
@@ -12,7 +16,7 @@ def display_video_card(video: dict, youtube_service: YouTubeService):
         # Video title as a link
         st.markdown(f"### [{video.get('title', 'Unknown Title')}](https://youtube.com/watch?v={video['id']})")
         
-         # Download controls
+        # Download controls
         video_id = video['id']
         download_key = f"download_{video_id}"
         
@@ -25,7 +29,14 @@ def display_video_card(video: dict, youtube_service: YouTubeService):
                 progress_callback=lambda p: progress_bar.progress(int(p)/100, text=f"Downloading... {int(p)}%")
             )
             if result['success']:
-                st.success("✅ Downloaded")
+                # Auto-convert to OGG after successful download
+                mp3_path = youtube_service.get_audio_path(video_id)
+                with st.spinner("Converting to OGG format..."):
+                    success, result = audio_service.convert_to_ogg(mp3_path)
+                    if success:
+                        st.success("✅ Downloaded and converted to OGG")
+                    else:
+                        st.error(f"❌ OGG conversion failed: {result}")
                 st.session_state[download_key] = False
                 st.rerun()
         else:

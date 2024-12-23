@@ -19,7 +19,7 @@ class AudioSplitter:
         """Check if audio has already been split."""
         splits_dir = self.get_splits_directory(video_id)
         # Check for either mp3 or ogg files
-        has_splits = any(splits_dir.glob('*.mp3')) or any(splits_dir.glob('*.ogg'))
+        has_splits = any(splits_dir.glob('*.mp3')) or any(splits_dir.glob('*.ogg')) or any(splits_dir.glob('*.wav'))
         return has_splits and splits_dir.exists()
     
     def get_splits(self, video_id, transcription_path):
@@ -38,6 +38,7 @@ class AudioSplitter:
                     base_path = os.path.splitext(split['audio_file'])[0]
                     mp3_path = f"{base_path}.mp3"
                     ogg_path = f"{base_path}.ogg"
+                    wav_path = f"{base_path}.wav"
                     
                     if os.path.exists(mp3_path):
                         split['audio_file'] = mp3_path
@@ -45,20 +46,23 @@ class AudioSplitter:
                     elif os.path.exists(ogg_path):
                         split['audio_file'] = ogg_path
                         valid_splits.append(split)
+                    elif os.path.exists(wav_path):
+                        split['audio_file'] = wav_path
+                        valid_splits.append(split)
             
             return valid_splits if valid_splits else None
             
         except Exception:
             return None
     
-    def split_audio(self, audio_path, video_id, transcription_path, output_format='mp3'):
+    def split_audio(self, audio_path, video_id, transcription_path, output_format='wav'):
         """Split audio file based on transcription segments.
         
         Args:
             audio_path: Path to the source audio file
             video_id: Video ID for organizing splits
             transcription_path: Path to the transcription Excel file
-            output_format: Format to save split files in ('mp3' or 'ogg')
+            output_format: Format to save split files in ('wav' recommended for high quality)
         """
         try:
             # Read transcription data
@@ -71,7 +75,7 @@ class AudioSplitter:
             splits_dir = self.get_splits_directory(video_id)
             
             # Clear existing splits if any
-            for ext in ['mp3', 'ogg']:
+            for ext in ['mp3', 'ogg', 'wav']:
                 for existing_file in splits_dir.glob(f'*.{ext}'):
                     try:
                         os.remove(existing_file)
@@ -88,21 +92,31 @@ class AudioSplitter:
                 # Extract segment
                 segment_audio = audio[start_ms:end_ms]
                 
-                # Generate filename
-                filename = f"segment_{idx:03d}.{output_format}"
+                # Generate filename with video ID
+                filename = f"{video_id}_segment_{idx:03d}.{output_format}"
                 output_path = splits_dir / filename
                 
                 # Export segment with appropriate settings
                 try:
-                    if output_format == 'mp3':
+                    if output_format == 'wav':
+                        # Export as 24-bit WAV with 48kHz sample rate
+                        segment_audio.export(
+                            str(output_path),
+                            format="wav",
+                            parameters=[
+                                "-acodec", "pcm_s24le",  # 24-bit depth
+                                "-ar", "48000"  # 48kHz sample rate
+                            ]
+                        )
+                    elif output_format == 'mp3':
                         segment_audio.export(
                             str(output_path),
                             format="mp3",
                             bitrate="192k",
-                            parameters=["-q:a", "0"]  # Use highest quality
+                            parameters=["-q:a", "0"]
                         )
                     else:
-                        segment_audio.export(str(output_path), format="ogg")
+                        segment_audio.export(str(output_path), format=output_format)
                     
                     # Only add to split_info if export was successful
                     split_info.append({
@@ -110,7 +124,10 @@ class AudioSplitter:
                         'start_time': segment['start_time'],
                         'end_time': segment['end_time'],
                         'text': segment['text'],
-                        'audio_file': str(output_path)
+                        'audio_file': str(output_path),
+                        'duration': (end_ms - start_ms) / 1000,  # Duration in seconds
+                        'filename': filename,
+                        'relative_path': str(output_path.relative_to(self.splits_dir))
                     })
                 except Exception as e:
                     print(f"Error exporting segment {idx}: {e}")
@@ -121,8 +138,22 @@ class AudioSplitter:
             
             # Update Excel file with split information
             splits_df = pd.DataFrame(split_info)
-            with pd.ExcelWriter(transcription_path, mode='a', engine='openpyxl', if_sheet_exists='replace') as writer:
+            
+            # Create a new Excel writer
+            with pd.ExcelWriter(transcription_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                # Write splits information to 'Splits' sheet
                 splits_df.to_excel(writer, sheet_name='Splits', index=False)
+                
+                # Create a mapping sheet with filename and text
+                mapping_df = pd.DataFrame({
+                    'filename': splits_df['filename'],
+                    'relative_path': splits_df['relative_path'],
+                    'duration': splits_df['duration'],
+                    'text': splits_df['text'],
+                    'start_time': splits_df['start_time'],
+                    'end_time': splits_df['end_time']
+                })
+                mapping_df.to_excel(writer, sheet_name='AudioTextMapping', index=False)
             
             return True, f"Split {len(split_info)} segments successfully"
             

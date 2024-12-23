@@ -1,18 +1,20 @@
 import streamlit as st
-import os
 from domain.youtube_service import YouTubeService
 from domain.data_service import DataService
 from ui.search_form import search_youtube_videos
 from ui.results_display import display_search_results
-from dotenv import load_dotenv
+from domain.config_service import ConfigService
+
+# Initialize config service
+config_service = ConfigService()
 
 # Initialize session states for API keys if not exists
 if 'youtube_api_key' not in st.session_state:
-    st.session_state.youtube_api_key = os.getenv('YOUTUBE_API_KEY', '')
+    st.session_state.youtube_api_key = ''  
 if 'openai_api_key' not in st.session_state:
-    st.session_state.openai_api_key = os.getenv('OPENAI_API_KEY', '')
+    st.session_state.openai_api_key = ''
 if 'data_dir' not in st.session_state:
-    st.session_state.data_dir = os.getenv('DATA_DIR', '')
+    st.session_state.data_dir = 'data'
 
 # Initialize services with session state API key
 youtube_service = YouTubeService(st.session_state.youtube_api_key)
