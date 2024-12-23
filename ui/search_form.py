@@ -15,6 +15,7 @@ def search_youtube_videos(youtube_service: YouTubeService):
             selected_license = st.selectbox(
                 'License Type',
                 options=[None] + list(license_types.keys()),
+                index=1,
                 format_func=lambda x: 'Any License' if x is None else license_types[x]
             )
         
@@ -22,7 +23,7 @@ def search_youtube_videos(youtube_service: YouTubeService):
             st.session_state.videos_per_page = st.selectbox(
                 'Videos per page',
                 options=[6, 9, 12, 15],
-                index=1
+                index=3
             )
         
         search_submitted = st.form_submit_button('Search Videos')

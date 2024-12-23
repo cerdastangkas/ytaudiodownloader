@@ -11,7 +11,6 @@ import math
 from pathlib import Path
 import datetime
 from utils.date_formatter import format_published_date
-from domain.audio_splitter import AudioSplitter
 
 # Page config
 st.set_page_config(
@@ -223,7 +222,7 @@ def display_downloaded_file(file_info, col):
                         else:
                             st.error(f"❌ Failed to split audio: {result}")
             else:
-                st.info("✅ Audio already split into segments")
+                st.info("✅ Audio already splitted into segments")
             
             if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}"):
                 st.session_state['selected_video_id'] = file_info['id']
@@ -235,22 +234,23 @@ def display_downloaded_file(file_info, col):
                     success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
                     if success:
                         st.success("✅ Transcription complete!")
+                    else:
+                        st.error(f"❌ Transcription failed: {result}")
                 
-                if success:  # Only attempt splitting if transcription was successful
-                    with st.spinner("Splitting audio into segments..."):
-                        split_success, split_result = audio_splitter.split_audio(
-                            file_info['file_path'],
-                            file_info['id'],
-                            transcription_service.get_excel_path(file_info['id']),
-                            'wav'  # Use WAV format for high quality
-                        )
-                        if split_success:
-                            st.success("✅ Audio split successfully!")
-                        else:
-                            st.warning(f"⚠️ Audio split failed: {split_result}")
-                    st.rerun()
-                else:
-                    st.error(f"❌ Transcription failed: {result}")
+            if success:  # Only attempt splitting if transcription was successful
+                with st.spinner("Splitting audio into segments..."):
+                    split_success, split_result = audio_splitter.split_audio(
+                        file_info['file_path'],
+                        file_info['id'],
+                        transcription_service.get_excel_path(file_info['id']),
+                        'wav'  # Use WAV format for high quality
+                    )
+                    if split_success:
+                        st.success("✅ Audio split successfully!")
+                    else:
+                        st.warning(f"⚠️ Audio split failed: {split_result}")
+                st.rerun()
+            
         else:
             if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
                 with st.spinner("Converting to OGG format..."):

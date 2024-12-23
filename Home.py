@@ -189,12 +189,12 @@ col1, col2 = st.columns(2)
 with col1:
     st.markdown("""
     <div class="feature-section">
-        <p class="feature-title">🔍 Smart Search</p>
+        <p class="feature-title">🔍 Search & Download</p>
         <ul>
-            <li>Search YouTube videos by keywords</li>
-            <li>Filter videos longer than 3 minutes</li>
-            <li>View video thumbnails and details</li>
-            <li>Results automatically saved to Excel</li>
+            <li>Smart YouTube video search</li>
+            <li>Filter by duration and license</li>
+            <li>High-quality audio downloads</li>
+            <li>Automatic metadata extraction</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -202,12 +202,12 @@ with col1:
 with col2:
     st.markdown("""
     <div class="feature-section">
-        <p class="feature-title">📥 Download Management</p>
+        <p class="feature-title">🎯 Transcription</p>
         <ul>
-            <li>Download audio in high quality</li>
-            <li>View download progress</li>
-            <li>Access downloaded files easily</li>
-            <li>Manage your audio collection</li>
+            <li>AI-powered audio transcription</li>
+            <li>Split audio into segments</li>
+            <li>Interactive audio playback</li>
+            <li>Timestamps for each segment</li>
         </ul>
     </div>
     """, unsafe_allow_html=True)
@@ -216,23 +216,34 @@ with col2:
 st.markdown('<p class="sub-header">📖 How to Use</p>', unsafe_allow_html=True)
 
 st.markdown("""
-1. **Search for Videos**
-   - Go to the "🎥 Search Youtube" page
-   - Enter your search keywords
-   - Browse through the results with pagination
-   - Click "Download Audio" on any video you want
+1. **Configure API Keys**
+   - Set up your YouTube API key in the sidebar
+   - Add your OpenAI API key for transcription
+   - Both keys are required for full functionality
 
-2. **Manage Downloads**
-   - Visit the "📂 Downloaded" page
-   - View all your downloaded audio files
-   - Play or delete files as needed
-   - See video details for each download
+2. **Search and Download**
+   - Go to the "🔍 Search" page
+   - Enter keywords and apply filters
+   - Browse videos with thumbnails and details
+   - Click "Download Audio" to save MP3s
 
-3. **Tips**
-   - Search results are automatically saved to Excel
-   - Only videos longer than 3 minutes are shown
-   - Downloaded files are stored in the 'data/downloaded' folder
-   - Use clear search terms for better results
+3. **Manage Downloads**
+   - Visit the "📂 Downloads" page
+   - View all downloaded videos
+   - Start transcription process
+   - Click "View Transcription" when ready
+
+4. **View Transcriptions**
+   - Open the "📝 Transcriptions" page
+   - See video details and thumbnail
+   - Expand segments to play audio
+   - Read transcribed text with timestamps
+
+5. **Tips**
+   - Search results are saved to Excel automatically
+   - Videos must be over 3 minutes long
+   - Audio segments load on-demand for better performance
+   - Click YouTube links to view original videos
 """)
 
 # Footer

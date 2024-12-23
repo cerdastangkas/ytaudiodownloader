@@ -12,14 +12,38 @@ A streamlined Streamlit application for searching and downloading audio from You
 - 🔄 Convert audio to OGG format
 - 🎯 Transcribe audio to text with timestamps
 - ✂️ Split audio into segments based on transcription
-- 📝 View and manage transcriptions with audio segments
+- 📝 Interactive transcription viewer with audio playback
 
 ### Additional Features
-- 🖼️ Thumbnail previews for videos and downloaded files
-- 📊 Progress tracking for downloads
+- 🖼️ Thumbnail previews for videos
+- 📊 Progress tracking for downloads and transcription
 - 📑 Export video details to Excel
 - 🔑 In-app API key management
 - 📱 Responsive and modern UI
+- 🎬 Video metadata display (title, channel, duration, views, likes)
+- 🎧 On-demand audio segment loading
+- 🔗 Direct links to YouTube videos
+
+### Pages
+1. **Home Page** 🏠
+   - API key management
+   - Quick start guide
+
+2. **Search Page** 🔍
+   - YouTube video search with filters
+   - Video previews with metadata
+   - Download options
+
+3. **Downloads Page** 📂
+   - List of downloaded videos
+   - Audio transcription controls
+   - View transcription button
+
+4. **Transcriptions Page** 📝
+   - Video information display
+   - Interactive audio segments
+   - Transcription text with timestamps
+   - Load audio on-demand for better performance
 
 ## Prerequisites
 
@@ -30,7 +54,7 @@ A streamlined Streamlit application for searching and downloading audio from You
 4. Create credentials (API key)
 5. Copy your API key
 
-### OpenAI API Key (Optional)
+### OpenAI API Key
 1. Visit [OpenAI Platform](https://platform.openai.com/)
 2. Sign up or log in to your account
 3. Go to API keys section
