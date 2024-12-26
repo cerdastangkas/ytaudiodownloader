@@ -82,7 +82,8 @@ class YouTubeService:
                         'thumbnail': snippet['thumbnails']['medium']['url'],
                         'channel_title': snippet['channelTitle'],
                         'published_at': snippet['publishedAt'],
-                        'duration': duration_map[video_id]
+                        'duration': duration_map[video_id],
+                        'license': license_type
                     }
                     videos.append(video_info)
 
@@ -147,9 +148,10 @@ class YouTubeService:
                 'error': str(e)
             }
 
-    def get_audio_path(self, video_id):
-        """Get the path to the downloaded audio file"""
-        return str(self.download_dir / f"{video_id}.mp3")
+    def get_source_path(self, video_id):
+        """Get the path to the downloaded audio file."""
+        path = self.download_dir / f"{video_id}.mp3"
+        return str(path.relative_to(Path.cwd()))
 
     def is_audio_downloaded(self, video_id):
         """Check if audio for this video is already downloaded"""

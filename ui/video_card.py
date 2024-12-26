@@ -33,7 +33,7 @@ def display_video_card(video: dict, youtube_service: YouTubeService, grid_positi
     audio_splitter = AudioSplitter()
     
     video_id = video['id']
-    file_path = youtube_service.get_audio_path(video_id)
+    file_path = youtube_service.get_source_path(video_id)
     
     with st.container():
         print(f"[DEBUG] Displaying video card for ID: {video_id} at position {grid_position}")

@@ -48,11 +48,11 @@ class AudioSplitter:
             print(f"Error getting splits: {e}")
             return []
     
-    def split_audio(self, audio_path, video_id, transcription_path, output_format='wav'):
+    def split_audio(self, source_path, video_id, transcription_path, output_format='wav'):
         """Split audio file based on transcription segments.
         
         Args:
-            audio_path: Path to the source audio file
+            source_path: Path to the source audio file
             video_id: Video ID for organizing splits
             transcription_path: Path to the transcription Excel file
             output_format: Format to save split files in ('wav' recommended for high quality)
@@ -70,7 +70,7 @@ class AudioSplitter:
                 for _, segment in segments_df.iterrows():
                     segments_data.append({
                         'video_id': metadata_df['video_id'].iloc[0],
-                        'audio_path': metadata_df['audio_path'].iloc[0],
+                        'source_path': str(Path(metadata_df['source_path'].iloc[0]).relative_to(Path.cwd())),
                         'start_time_seconds': segment['start_time'],
                         'end_time_seconds': segment['end_time'],
                         'duration_seconds': segment['end_time'] - segment['start_time'],
@@ -81,7 +81,7 @@ class AudioSplitter:
                 transcription_df = pd.DataFrame(segments_data)
             
             # Load audio file
-            audio = AudioSegment.from_file(audio_path)
+            audio = AudioSegment.from_file(source_path)
             
             # Get splits directory for this video
             splits_dir = self.get_splits_directory(video_id)
@@ -133,8 +133,6 @@ class AudioSplitter:
                     # Only add to split_info if export was successful
                     split_info.append({
                         'video_id': video_id,
-                        'filename': filename,
-                        'relative_path': str(output_path.relative_to(self.splits_dir)),
                         'audio_file': str(output_path),
                         'start_time_seconds': segment['start_time_seconds'],
                         'end_time_seconds': segment['end_time_seconds'],
@@ -164,8 +162,6 @@ class AudioSplitter:
             # Create a new Excel writer
             with pd.ExcelWriter(transcription_path, engine='openpyxl') as writer:
                 # Update transcription data with split information
-                transcription_df['filename'] = splits_df['filename']
-                transcription_df['relative_path'] = splits_df['relative_path']
                 transcription_df['audio_file'] = splits_df['audio_file']
                 
                 # Write updated transcription data

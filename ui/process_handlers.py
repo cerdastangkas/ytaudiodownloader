@@ -112,7 +112,7 @@ def handle_download(video_id: str, grid_position: str, youtube_service: YouTubeS
             return
         
         progress_bar.empty()
-        mp3_path = youtube_service.get_audio_path(video_id)
+        mp3_path = youtube_service.get_source_path(video_id)
         
         # Proceed with conversion after successful download
         handle_conversion(video_id, mp3_path, grid_position, audio_service, 

@@ -1,8 +1,6 @@
 import streamlit as st
 from domain.youtube_service import YouTubeService
 from domain.data_service import DataService
-from ui.search_form import search_youtube_videos
-from ui.results_display import display_search_results
 from domain.config_service import ConfigService
 
 # Initialize config service

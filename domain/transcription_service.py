@@ -31,17 +31,18 @@ class TranscriptionService:
         chunk_dir.mkdir(parents=True, exist_ok=True)
         return chunk_dir
     
-    def split_audio_file(self, audio_path, video_id):
-        """Split audio file into chunks of maximum 25MB."""
+    def split_audio_file(self, source_path, video_id):
+        """Split large audio files into chunks for transcription."""
         try:
-            # Load the audio file
-            audio = AudioSegment.from_file(audio_path)
+            # Load audio file
+            audio = AudioSegment.from_file(source_path)
             
-            # Get file size in bytes
-            file_size = os.path.getsize(audio_path)
+            # Get file size
+            file_size = os.path.getsize(source_path)
             
-            if file_size <= self.MAX_FILE_SIZE:
-                return [(audio_path, 0, len(audio))]
+            # If file is small enough, return it as a single chunk
+            if file_size < self.MAX_FILE_SIZE:
+                return [(source_path, 0, len(audio))]
             
             # Calculate number of chunks needed
             num_chunks = math.ceil(file_size / self.MAX_FILE_SIZE)
@@ -76,11 +77,11 @@ class TranscriptionService:
         except Exception as e:
             raise Exception(f"Error splitting audio: {str(e)}")
     
-    def transcribe_audio(self, audio_path, video_id):
-        """Transcribe audio using OpenAI Whisper API."""
+    def transcribe_audio(self, source_path, video_id):
+        """Transcribe audio file and save transcription data."""
         try:
-            # Split audio into chunks if necessary
-            chunks = self.split_audio_file(audio_path, video_id)
+            # Split audio into chunks if needed
+            chunks = self.split_audio_file(source_path, video_id)
             
             all_segments = []
             full_text = []
@@ -110,7 +111,7 @@ class TranscriptionService:
             # Combine all transcriptions
             transcription_data = {
                 'video_id': video_id,
-                'audio_path': str(audio_path),
+                'source_path': str(Path(source_path).relative_to(Path.cwd())),
                 'full_text': ' '.join(full_text),
                 'segments': all_segments,
                 'language': 'id',
@@ -142,7 +143,7 @@ class TranscriptionService:
         for segment in transcription_data['segments']:
             segments_data.append({
                 'video_id': video_id,
-                'audio_path': transcription_data['audio_path'],
+                'source_path': transcription_data['source_path'],
                 'start_time_seconds': segment['start'],
                 'end_time_seconds': segment['end'],
                 'duration_seconds': segment['end'] - segment['start'],
@@ -181,7 +182,7 @@ class TranscriptionService:
                 for _, segment in segments_df.iterrows():
                     segments_data.append({
                         'video_id': metadata_df['video_id'].iloc[0],
-                        'audio_path': metadata_df['audio_path'].iloc[0],
+                        'source_path': str(Path(metadata_df['source_path'].iloc[0]).relative_to(Path.cwd())),
                         'start_time_seconds': segment['start_time'],
                         'end_time_seconds': segment['end_time'],
                         'duration_seconds': segment['end_time'] - segment['start_time'],
