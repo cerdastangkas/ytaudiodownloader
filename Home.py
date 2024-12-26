@@ -10,11 +10,11 @@ config_service = ConfigService()
 
 # Initialize session states for API keys if not exists
 if 'youtube_api_key' not in st.session_state:
-    st.session_state.youtube_api_key = ''  
+    st.session_state.youtube_api_key = config_service.get_youtube_api_key()
 if 'openai_api_key' not in st.session_state:
-    st.session_state.openai_api_key = ''
+    st.session_state.openai_api_key = config_service.get_openai_api_key()
 if 'data_dir' not in st.session_state:
-    st.session_state.data_dir = 'data'
+    st.session_state.data_dir = config_service.get_data_dir()
 
 # Initialize services with session state API key
 youtube_service = YouTubeService(st.session_state.youtube_api_key)

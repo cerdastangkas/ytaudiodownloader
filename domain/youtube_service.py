@@ -18,6 +18,8 @@ class YouTubeService:
 
         # If no query provided, use a broad search term
         search_query = query if query else '*'
+        
+        print(f"[DEBUG] Starting search with query: {search_query}, license: {license_type}")
 
         # Build search parameters
         search_params = {
@@ -33,11 +35,15 @@ class YouTubeService:
             
         if page_token:
             search_params['pageToken'] = page_token
+            
+        print(f"[DEBUG] Search parameters: {search_params}")
 
         try:
             # Execute search request
             request = youtube.search().list(**search_params)
             response = request.execute()
+            
+            print(f"[DEBUG] Initial search found {len(response.get('items', []))} items")
 
             # Get video details including duration
             video_ids = [item['id']['videoId'] for item in response.get('items', [])]
@@ -46,6 +52,7 @@ class YouTubeService:
             duration_map = {}
             
             if video_ids:
+                print(f"[DEBUG] Fetching details for {len(video_ids)} videos")
                 video_details = youtube.videos().list(
                     part='contentDetails',
                     id=','.join(video_ids)
@@ -58,7 +65,9 @@ class YouTubeService:
                     # Only include videos longer than 3 minutes
                     if duration_seconds >= 180:  # 3 minutes = 180 seconds
                         duration_map[item['id']] = self._format_duration(duration)
-            
+                
+                print(f"[DEBUG] Found {len(duration_map)} videos longer than 3 minutes")
+
             # Process search results and filter out videos with no duration (too short)
             videos = []
             for item in response.get('items', []):

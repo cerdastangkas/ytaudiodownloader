@@ -29,10 +29,19 @@ def search_youtube_videos(youtube_service: YouTubeService):
         search_submitted = st.form_submit_button('Search Videos')
         
         if search_submitted:
+            print("\n[DEBUG] ===== New Search Started =====")
+            print(f"[DEBUG] Search Query: '{query}'")
+            print(f"[DEBUG] License Type: {selected_license}")
+            print(f"[DEBUG] Videos per page: {st.session_state.videos_per_page}")
+            
+            # Reset pagination state
             st.session_state.page_token = None
             st.session_state.all_videos = []
             st.session_state.current_page = 1
+            
+            # Update search parameters
             st.session_state.search_params = {
                 'query': query if query else None,
                 'license_type': selected_license if selected_license else None
             }
+            print("[DEBUG] Search state reset and parameters updated")

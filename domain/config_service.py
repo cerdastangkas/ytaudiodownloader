@@ -29,6 +29,18 @@ class ConfigService:
         except Exception as e:
             return False, f"Error updating API key: {str(e)}"
 
+    def get_data_dir(self):
+        """Get data directory from environment variables"""
+        return self.get_api_key('DATA_DIR')
+
+    def get_youtube_api_key(self):
+        """Get YouTube API key from environment variables"""
+        return self.get_api_key('YOUTUBE_API_KEY')
+
+    def get_openai_api_key(self):
+        """Get OpenAI API key from environment variables"""
+        return self.get_api_key('OPENAI_API_KEY')
+
     def validate_youtube_api_key(self, api_key):
         """Basic validation for YouTube API key format"""
         if not api_key:
