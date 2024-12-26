@@ -195,10 +195,14 @@ def display_downloaded_file(file_info, col):
 
         # Process existing transcription
         existing_transcription = transcription_service.get_transcription(video_id)
-        has_splits = audio_splitter.is_already_split(video_id)
+        has_wav_splits = audio_splitter.has_wav_splits(video_id)
+        has_splits = audio_splitter.has_splits(video_id)
         has_converted = audio_service.get_converted_file(video_id)
-        if has_splits:
-                st.success("✅ Transcription and audio segments are available")
+        
+        if has_wav_splits:
+            st.success("✅ Transcription and WAV audio segments are available")
+        elif has_splits:
+            st.success("✅ Transcription and audio segments available (not WAV)")
         elif existing_transcription:
             st.success("✅ Transcription available")
         elif has_converted:
@@ -229,7 +233,7 @@ def display_downloaded_file(file_info, col):
         # existing_transcription = transcription_service.get_transcription(video_id)
         
         if existing_transcription:
-            if not has_splits:             
+            if not has_wav_splits:             
                 # Handle split audio button and processing
                 if not get_processing_state(video_id, grid_position, "split"):
                     if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}"):

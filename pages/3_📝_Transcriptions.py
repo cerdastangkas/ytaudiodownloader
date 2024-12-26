@@ -69,7 +69,8 @@ if video_info:
         # Add YouTube link
         st.markdown(f"🔗 [Watch on YouTube](https://youtu.be/{video_id})")
 
-        if not splits:
+        # Show split button if no WAV splits exist
+        if not audio_splitter.has_wav_splits(video_id):
             grid_position = f"transcribe_{video_id}"
             if not get_processing_state(video_id, grid_position, "split"):
                 if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}"):
