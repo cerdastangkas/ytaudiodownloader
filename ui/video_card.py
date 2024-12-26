@@ -73,21 +73,21 @@ def display_video_card(video: dict, youtube_service: YouTubeService, grid_positi
                 if not has_splits:
                     # Handle split audio button and processing
                     if not get_processing_state(video_id, grid_position, "split"):
-                        if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}", type="secondary"):
+                        if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}"):
                             set_processing_state(video_id, grid_position, "split", True)
                             st.rerun()
                     
                     if get_processing_state(video_id, grid_position, "split"):
                         handle_split_audio(video_id, file_path, grid_position, audio_splitter, transcription_service)
             
-                if st.button("📝 View Transcription", key=f"view_transcription_{video_id}_{grid_position}", type="secondary"):
+                if st.button("📝 View Transcription", key=f"view_transcription_{video_id}_{grid_position}"):
                     st.session_state['selected_video_id'] = video_id
                     st.switch_page("pages/3_📝_Transcriptions.py")
                     
             elif has_converted:
                 # Handle transcribe button and processing
                 if not get_processing_state(video_id, grid_position, "transcribe"):
-                    if st.button("🎯 Transcribe", key=f"transcribe_{video_id}_{grid_position}", type="primary"):
+                    if st.button("🎯 Transcribe", key=f"transcribe_{video_id}_{grid_position}"):
                         set_processing_state(video_id, grid_position, "transcribe", True)
                         st.rerun()
             
@@ -97,7 +97,7 @@ def display_video_card(video: dict, youtube_service: YouTubeService, grid_positi
             elif youtube_service.is_audio_downloaded(video_id):
                 # Handle convert button and processing
                 if not get_processing_state(video_id, grid_position, "convert"):
-                    if st.button("🔄 Convert to OGG", key=f"convert_{video_id}_{grid_position}", type="secondary"):
+                    if st.button("🔄 Convert to OGG", key=f"convert_{video_id}_{grid_position}"):
                         set_processing_state(video_id, grid_position, "convert", True)
                         st.rerun()
             
@@ -108,7 +108,7 @@ def display_video_card(video: dict, youtube_service: YouTubeService, grid_positi
             else:
                 # Handle download button and processing
                 if not get_processing_state(video_id, grid_position, "download"):
-                    if st.button("🎵 Download", key=f"download_{video_id}_{grid_position}", type="primary"):
+                    if st.button("🎵 Download", key=f"download_{video_id}_{grid_position}"):
                         set_processing_state(video_id, grid_position, "download", True)
                         st.rerun()
                 

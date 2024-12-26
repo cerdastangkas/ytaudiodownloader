@@ -22,7 +22,7 @@ class AudioSplitter:
         has_splits = any(splits_dir.glob('*.mp3')) or any(splits_dir.glob('*.ogg')) or any(splits_dir.glob('*.wav'))
         return has_splits and splits_dir.exists()
     
-    def get_splits(self, video_id, transcription_path):
+    def get_splits(self, transcription_path):
         """Get information about splits for a video."""
         try:
             try:

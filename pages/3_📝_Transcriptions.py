@@ -1,10 +1,15 @@
 import streamlit as st
-import pandas as pd
-from pathlib import Path
 from domain.transcription_service import TranscriptionService
 from domain.audio_splitter import AudioSplitter
 from domain.data_service import DataService
-from domain.config_service import ConfigService
+from domain.audio_service import AudioService
+from ui.process_handlers import (
+    get_processing_state,
+    set_processing_state,
+    handle_split_audio
+)
+
+audio_service = AudioService()
 
 # Page config
 st.set_page_config(
@@ -32,6 +37,7 @@ if 'selected_video_id' not in st.session_state:
     st.stop()
 
 video_id = st.session_state['selected_video_id']
+splits = audio_splitter.get_splits(transcription_service.get_excel_path(video_id))
 
 # Get video info
 video_info = data_service.get_video_info(video_id)
@@ -63,13 +69,21 @@ if video_info:
         # Add YouTube link
         st.markdown(f"🔗 [Watch on YouTube](https://youtu.be/{video_id})")
 
-st.divider()
+        if not splits:
+            grid_position = f"transcribe_{video_id}"
+            if not get_processing_state(video_id, grid_position, "split"):
+                if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}"):
+                    set_processing_state(video_id, grid_position, "split", True)
+                    st.rerun()
+            
+            if get_processing_state(video_id, grid_position, "split"):
+                file_path = audio_service.get_converted_file(video_id)
+                handle_split_audio(video_id, file_path, grid_position, audio_splitter, transcription_service)
 
-splits = audio_splitter.get_splits(video_id, transcription_service.get_excel_path(video_id))
+st.divider()
 
 if not splits:
     st.error("❌ No audio segments found for this transcription.")
-    st.stop()
 
 # Initialize expanded states in session state if not exists
 if 'expanded_segments' not in st.session_state:

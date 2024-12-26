@@ -2,8 +2,8 @@ import json
 import os
 from pathlib import Path
 import pandas as pd
-from datetime import datetime
 import streamlit as st
+from datetime import datetime
 
 class DataService:
     def __init__(self, data_dir='data'):
@@ -64,63 +64,6 @@ class DataService:
             print(f"Error reading Excel: {str(e)}")
         return []
     
-    def add_download(self, video_info, file_path):
-        """Add a new download entry."""
-        downloads = self._load_downloads()
-        
-        # Check if video already exists
-        for download in downloads:
-            if download['id'] == video_info['id']:
-                # Update existing entry
-                download.update({
-                    'title': video_info['title'],
-                    'channel_title': video_info['channel_title'],
-                    'duration': video_info['duration'],
-                    'published_at': video_info.get('published_at'),
-                    'file_path': str(file_path),
-                    'downloaded_at': datetime.now().isoformat()
-                })
-                self._save_downloads(downloads)
-                return
-        
-        # Add new entry
-        downloads.append({
-            'id': video_info['id'],
-            'title': video_info['title'],
-            'channel_title': video_info['channel_title'],
-            'duration': video_info['duration'],
-            'published_at': video_info.get('published_at'),
-            'file_path': str(file_path),
-            'downloaded_at': datetime.now().isoformat()
-        })
-        
-        self._save_downloads(downloads)
-    
-    def remove_download(self, video_id):
-        """Remove a download entry."""
-        downloads = self._load_downloads()
-        downloads = [d for d in downloads if d['id'] != video_id]
-        self._save_downloads(downloads)
-    
-    def get_download_info(self, video_id):
-        """Get information about a downloaded video."""
-        downloads = self._load_downloads()
-        for download in downloads:
-            if download['id'] == video_id:
-                return download
-        return None
-    
-    def load_excel_data(self, file_path):
-        """Load data from Excel file"""
-        try:
-            df = pd.read_excel(file_path)
-            return df.to_dict('records')
-        except FileNotFoundError:
-            return []
-        except Exception as e:
-            st.error(f"Error loading Excel file: {str(e)}")
-            return []
-
     def save_videos_to_excel(self, videos, excel_file=None):
         """Save videos data to Excel file"""
         if excel_file:
