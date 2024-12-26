@@ -16,8 +16,8 @@ from ui.process_handlers import (
 def display_video_info(video: dict, video_id: str):
     """Display video information."""
     st.image(
-        video['thumbnail_url'],
-        use_column_width=True,
+        video['thumbnail'],
+        use_container_width=True,
         caption=video['title']
     )
     
@@ -42,50 +42,65 @@ def display_video_card(video: dict, youtube_service: YouTubeService, grid_positi
         # Card container with fixed height and scrollable content
         with st.container():
             # Display video information
-            display_video_info(video, video_id)
+            """Display video information."""
+            st.image(
+                video['thumbnail'],
+                use_container_width=True
+            )
             
             # Process existing transcription
             existing_transcription = transcription_service.get_transcription(video_id)
-            
-            if existing_transcription:
+            has_splits = audio_splitter.is_already_split(video_id)
+            has_converted = audio_service.get_converted_file(video_id)
+            has_downloaded = youtube_service.is_audio_downloaded(video_id)
+
+            if has_splits:
+                st.success("✅ Transcription and audio segments are available")
+            elif existing_transcription:
                 st.success("✅ Transcription available")
-                has_splits = audio_splitter.is_already_split(video_id)
-                
-                if has_splits:
-                    st.info("✅ Audio segments are available")
-                else:
+            elif has_converted:
+                st.success("✅ Converted to OGG")
+            elif has_downloaded:
+                st.success("✅ Downloaded")
+            
+            st.markdown(f"##### [{video['title']}](https://youtu.be/{video_id})")
+            st.markdown(f"**Channel:** {video['channel_title']}")
+            st.markdown(f"**Duration:** {video['duration']}")
+            st.markdown(f"**Video ID:** {video_id}")
+            st.markdown(f"**Published:** {format_published_date(video['published_at'])}")
+            
+            if existing_transcription:              
+                if not has_splits:
                     # Handle split audio button and processing
                     if not get_processing_state(video_id, grid_position, "split"):
-                        if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}"):
+                        if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}", type="secondary"):
                             set_processing_state(video_id, grid_position, "split", True)
                             st.rerun()
                     
                     if get_processing_state(video_id, grid_position, "split"):
                         handle_split_audio(video_id, file_path, grid_position, audio_splitter, transcription_service)
-                
-                if st.button("📝 View Transcription", key=f"view_transcription_{video_id}_{grid_position}"):
+            
+                if st.button("📝 View Transcription", key=f"view_transcription_{video_id}_{grid_position}", type="secondary"):
                     st.session_state['selected_video_id'] = video_id
                     st.switch_page("pages/3_📝_Transcriptions.py")
                     
-            elif audio_service.get_converted_file(video_id):
-                st.success("✅ Converted to OGG")
+            elif has_converted:
                 # Handle transcribe button and processing
                 if not get_processing_state(video_id, grid_position, "transcribe"):
-                    if st.button("🎯 Transcribe", key=f"transcribe_{video_id}_{grid_position}"):
+                    if st.button("🎯 Transcribe", key=f"transcribe_{video_id}_{grid_position}", type="primary"):
                         set_processing_state(video_id, grid_position, "transcribe", True)
                         st.rerun()
-                
+            
                 if get_processing_state(video_id, grid_position, "transcribe"):
                     handle_transcription(video_id, file_path, grid_position, transcription_service, audio_splitter)
                     
             elif youtube_service.is_audio_downloaded(video_id):
-                st.success("✅ Downloaded")
                 # Handle convert button and processing
                 if not get_processing_state(video_id, grid_position, "convert"):
-                    if st.button("🔄 Convert to OGG", key=f"convert_{video_id}_{grid_position}"):
+                    if st.button("🔄 Convert to OGG", key=f"convert_{video_id}_{grid_position}", type="secondary"):
                         set_processing_state(video_id, grid_position, "convert", True)
                         st.rerun()
-                
+            
                 if get_processing_state(video_id, grid_position, "convert"):
                     handle_conversion(video_id, file_path, grid_position, audio_service, 
                                    transcription_service, audio_splitter)
@@ -93,10 +108,12 @@ def display_video_card(video: dict, youtube_service: YouTubeService, grid_positi
             else:
                 # Handle download button and processing
                 if not get_processing_state(video_id, grid_position, "download"):
-                    if st.button("🎵 Download", key=f"download_{video_id}_{grid_position}"):
+                    if st.button("🎵 Download", key=f"download_{video_id}_{grid_position}", type="primary"):
                         set_processing_state(video_id, grid_position, "download", True)
                         st.rerun()
                 
                 if get_processing_state(video_id, grid_position, "download"):
                     handle_download(video_id, grid_position, youtube_service, audio_service,
                                  transcription_service, audio_splitter)
+    
+    st.divider()

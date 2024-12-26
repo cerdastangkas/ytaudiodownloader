@@ -7,6 +7,13 @@ from domain.audio_service import AudioService
 from domain.transcription_service import TranscriptionService
 from domain.audio_splitter import AudioSplitter
 from domain.config_service import ConfigService
+from ui.process_handlers import (
+    get_processing_state,
+    set_processing_state,
+    handle_split_audio,
+    handle_transcription,
+    handle_conversion
+)
 import math
 from pathlib import Path
 import datetime
@@ -177,123 +184,104 @@ def duration_to_seconds(duration_str):
         return 0
 
 def display_downloaded_file(file_info, col):
+    """Display a single downloaded file with audio player and processing options."""
+    video_id = file_info['id']
+    file_path = file_info['file_path']
+    grid_position = f"downloaded_{video_id}"
+    
     with col:
         if 'thumbnail' in file_info:
-            st.image(file_info['thumbnail'], width=None)
+            st.image(file_info['thumbnail'], width=None, caption=file_info['title'])
+
+        # Process existing transcription
+        existing_transcription = transcription_service.get_transcription(video_id)
+        has_splits = audio_splitter.is_already_split(video_id)
+        has_converted = audio_service.get_converted_file(video_id)
+        if has_splits:
+                st.success("✅ Transcription and audio segments are available")
+        elif existing_transcription:
+            st.success("✅ Transcription available")
+        elif has_converted:
+            st.success("✅ Converted to OGG")
+        else:
+            st.success("✅ Downloaded")
+
+        # Display audio player
+        ogg_file = audio_service.get_converted_file(video_id)
+        audio_file = str(ogg_file) if ogg_file else file_path
+        file_format = "OGG" if ogg_file else "MP3"
         
-        st.markdown(f"### {file_info['title']}")
-        st.markdown(f"**Video ID:** {file_info['id']}")
+        # st.markdown(f"##### 🎵 Audio Player ({file_format})")
+        # Add checkbox to load audio
+        load_audio = st.checkbox(f"🎵 Load Audio Player ({file_format})", key=f"load_{video_id}")
+        if load_audio:
+            st.audio(audio_file)
+        
+        # st.markdown(f"### {file_info['title']}")
         st.markdown(f"**Channel:** {file_info['channel_title']}")
         st.markdown(f"**Duration:** {file_info['duration']}")
+        st.markdown(f"**Video ID:** {video_id}")
         
         if 'published_at' in file_info:
             st.markdown(f"**Published:** {file_info['published_at']}")
         
-        ogg_file = audio_service.get_converted_file(file_info['id'])
-        audio_file = str(ogg_file) if ogg_file else file_info['file_path']
-        file_format = "OGG" if ogg_file else "MP3"
-        
-        st.markdown(f"##### 🎵 Audio Player ({file_format})")
-        st.audio(audio_file)
-        
-        file_size = os.path.getsize(file_info['file_path']) / (1024 * 1024)
-        st.markdown(f"**Size:** {file_size:.1f} MB")
-        
-        # Check if transcription exists
-        existing_transcription = transcription_service.get_transcription(file_info['id'])
+        # Process existing transcription
+        # existing_transcription = transcription_service.get_transcription(video_id)
         
         if existing_transcription:
-            st.success("✅ Transcription available")
+            if not has_splits:             
+                # Handle split audio button and processing
+                if not get_processing_state(video_id, grid_position, "split"):
+                    if st.button("✂️ Split Audio", key=f"split_{video_id}_{grid_position}"):
+                        set_processing_state(video_id, grid_position, "split", True)
+                        st.rerun()
+                
+                if get_processing_state(video_id, grid_position, "split"):
+                    handle_split_audio(video_id, file_path, grid_position, audio_splitter, transcription_service)
             
-            # Check if audio is already split
-            has_splits = audio_splitter.is_already_split(file_info['id'])
-            if not has_splits:
-                if st.button("✂️ Split Audio", key=f"split_audio_{file_info['id']}"):
-                    with st.spinner("Splitting audio based on transcription..."):
-                        success, result = audio_splitter.split_audio(
-                            file_info['file_path'], 
-                            file_info['id'],
-                            transcription_service.get_excel_path(file_info['id']),
-                            'wav'  # Use WAV format for high quality
-                        )
-                        if success:
-                            st.success("✅ Audio split successfully!")
-                            st.rerun()
-                        else:
-                            st.error(f"❌ Failed to split audio: {result}")
-            else:
-                st.info("✅ Audio already splitted into segments")
-            
-            if st.button("📝 View Transcription", key=f"view_transcription_{file_info['id']}"):
-                st.session_state['selected_video_id'] = file_info['id']
+            if st.button("📝 View Transcription", key=f"view_transcription_{video_id}_{grid_position}"):
+                st.session_state['selected_video_id'] = video_id
                 st.switch_page("pages/3_📝_Transcriptions.py")
                 
-        elif ogg_file:
-            if st.button("🎯 Transcribe", key=f"transcribe_{file_info['id']}"):
-                with st.spinner("Transcribing audio... This may take a while."):
-                    success, result = transcription_service.transcribe_audio(ogg_file, file_info['id'])
-                    if success:
-                        st.success("✅ Transcription complete!")
-                    else:
-                        st.error(f"❌ Transcription failed: {result}")
-                
-            if success:  # Only attempt splitting if transcription was successful
-                with st.spinner("Splitting audio into segments..."):
-                    split_success, split_result = audio_splitter.split_audio(
-                        file_info['file_path'],
-                        file_info['id'],
-                        transcription_service.get_excel_path(file_info['id']),
-                        'wav'  # Use WAV format for high quality
-                    )
-                    if split_success:
-                        st.success("✅ Audio split successfully!")
-                    else:
-                        st.warning(f"⚠️ Audio split failed: {split_result}")
-                st.rerun()
+        elif has_converted:
+            # Handle transcribe button and processing
+            if not get_processing_state(video_id, grid_position, "transcribe"):
+                if st.button("🎯 Transcribe", key=f"transcribe_{video_id}_{grid_position}"):
+                    set_processing_state(video_id, grid_position, "transcribe", True)
+                    st.rerun()
             
+            if get_processing_state(video_id, grid_position, "transcribe"):
+                handle_transcription(video_id, file_path, grid_position, transcription_service, audio_splitter)
+                
         else:
-            if st.button("🔄 Convert to OGG", key=f"convert_{file_info['id']}"):
-                with st.spinner("Converting to OGG format..."):
-                    success, result = audio_service.convert_to_ogg(file_info['file_path'])
-                    if success:
-                        st.success("✅ Conversion successful!")
-                        st.rerun()
-                    else:
-                        st.error(f"❌ Conversion failed: {result}")
-
-        if st.button(f"🗑️ Delete", key=f"delete_{file_info['id']}"):
-            try:
-                os.remove(file_info['file_path'])
-                if ogg_file:
-                    os.remove(ogg_file)
-                transcription_path = transcription_service.get_excel_path(file_info['id'])
-                if os.path.exists(transcription_path):
-                    os.remove(transcription_path)
-                splits_dir = audio_splitter.get_splits_directory(file_info['id'])
-                if splits_dir.exists():
-                    for split_file in splits_dir.glob('*.ogg'):
-                        os.remove(split_file)
-                    os.rmdir(splits_dir)
-                st.success("File deleted successfully!")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error deleting file: {str(e)}")
+            # Handle convert button and processing
+            if not get_processing_state(video_id, grid_position, "convert"):
+                if st.button("🔄 Convert to OGG", key=f"convert_{video_id}_{grid_position}"):
+                    set_processing_state(video_id, grid_position, "convert", True)
+                    st.rerun()
+            
+            if get_processing_state(video_id, grid_position, "convert"):
+                handle_conversion(video_id, file_path, grid_position, audio_service, 
+                               transcription_service, audio_splitter)
         
-        st.markdown("---")
+        # Display file size
+        file_size = os.path.getsize(file_path) / (1024 * 1024)
+        st.markdown(f"**Size:** {file_size:.1f} MB")
+        
+        st.divider()
 
 if not downloaded_videos:
-    st.info("No downloaded files found. Go to Search page to download some audio!")
+    st.info("❌ No downloaded files found. Go to Search page to download some audio!")
 else:
     display_stats(downloaded_videos)
-    total_files = len(downloaded_videos)
-    total_pages = math.ceil(total_files / st.session_state.downloaded_per_page)
     
-    # Calculate start and end indices for current page
+    # Calculate pagination
+    total_pages = math.ceil(len(downloaded_videos) / st.session_state.downloaded_per_page)
     start_idx = (st.session_state.downloaded_page - 1) * st.session_state.downloaded_per_page
     end_idx = start_idx + st.session_state.downloaded_per_page
-    
-    # Display current page files in grid
     current_videos = downloaded_videos[start_idx:end_idx]
+    
+    # Display videos in grid
     cols = st.columns(3)
     for i, video in enumerate(current_videos):
         display_downloaded_file(video, cols[i % 3])
@@ -305,24 +293,21 @@ else:
         # Previous page button
         with cols[0]:
             if st.session_state.downloaded_page > 1:
-                if st.button("← Previous", use_container_width=True):
+                if st.button("← Previous"):
                     st.session_state.downloaded_page -= 1
                     st.rerun()
-            else:
-                st.write("")
         
         # Page indicator
         with cols[1]:
-            st.markdown(
-                f'<div style="text-align: center;">Page {st.session_state.downloaded_page} of {total_pages}</div>',
-                unsafe_allow_html=True
-            )
+            st.markdown(f"""
+                <div class="pagination-text">
+                    Page {st.session_state.downloaded_page} of {total_pages}
+                </div>
+            """, unsafe_allow_html=True)
         
         # Next page button
         with cols[2]:
             if st.session_state.downloaded_page < total_pages:
-                if st.button("Next →", use_container_width=True):
+                if st.button("Next →"):
                     st.session_state.downloaded_page += 1
                     st.rerun()
-            else:
-                st.write("")
