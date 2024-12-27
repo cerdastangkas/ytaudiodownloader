@@ -80,14 +80,17 @@ class TranscriptionService:
     def transcribe_audio(self, source_path, video_id):
         """Transcribe audio file and save transcription data."""
         try:
+            print(f"[DEBUG] Starting transcription for video {video_id}")
             # Split audio into chunks if needed
             chunks = self.split_audio_file(source_path, video_id)
+            print(f"[DEBUG] Split audio into {len(chunks)} chunks")
             
             all_segments = []
             full_text = []
             
             # Process each chunk
-            for chunk_path, start_ms, end_ms in chunks:
+            for i, (chunk_path, start_ms, end_ms) in enumerate(chunks):
+                print(f"[DEBUG] Processing chunk {i+1}/{len(chunks)}")
                 with open(chunk_path, 'rb') as audio_file:
                     # Call OpenAI's transcription API
                     transcript = self.client.audio.transcriptions.create(
@@ -108,18 +111,25 @@ class TranscriptionService:
                 
                 full_text.append(transcript.text)
             
+            print(f"[DEBUG] Transcription completed. Creating transcription data")
             # Combine all transcriptions
             transcription_data = {
                 'video_id': video_id,
-                'source_path': str(Path(source_path).relative_to(Path.cwd())),
+                'source_path': source_path,
                 'full_text': ' '.join(full_text),
                 'segments': all_segments,
                 'language': 'id',
                 'timestamp': datetime.now().isoformat()
             }
             
-            # Save to Excel
-            self._save_to_excel(transcription_data)
+            print(f"[DEBUG] Saving transcription data to Excel")
+            try:
+                # Save to Excel
+                self._save_to_excel(transcription_data)
+                print(f"[DEBUG] Excel file saved successfully at {self.get_excel_path(video_id)}")
+            except Exception as excel_error:
+                print(f"[ERROR] Failed to save Excel file: {str(excel_error)}")
+                return False, f"Transcription successful but failed to save Excel: {str(excel_error)}"
             
             # Clean up chunks if they were created
             if len(chunks) > 1:
@@ -131,34 +141,44 @@ class TranscriptionService:
             return True, transcription_data
             
         except Exception as e:
+            print(f"[ERROR] Transcription failed: {str(e)}")
             return False, str(e)
     
     def _save_to_excel(self, transcription_data):
         """Save transcription data to Excel file."""
-        video_id = transcription_data['video_id']
-        excel_path = self.get_excel_path(video_id)
-        
-        # Prepare segments data
-        segments_data = []
-        for segment in transcription_data['segments']:
-            segments_data.append({
-                'video_id': video_id,
-                'source_path': transcription_data['source_path'],
-                'start_time_seconds': segment['start'],
-                'end_time_seconds': segment['end'],
-                'duration_seconds': segment['end'] - segment['start'],
-                'text': segment['text'].strip(),
-                'language': transcription_data['language'],
-                'timestamp': transcription_data['timestamp']
-            })
-        
-        # Create DataFrame with segments
-        segments_df = pd.DataFrame(segments_data)
-        
-        # Create a writer object
-        with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-            # Write segments to single sheet
-            segments_df.to_excel(writer, sheet_name='Transcription', index=False)
+        try:
+            video_id = transcription_data['video_id']
+            excel_path = self.get_excel_path(video_id)
+            print(f"[DEBUG] Preparing Excel data for {video_id}")
+            
+            # Prepare segments data
+            segments_data = []
+            for segment in transcription_data['segments']:
+                segments_data.append({
+                    'video_id': video_id,
+                    'source_path': transcription_data['source_path'],
+                    'start_time_seconds': segment['start'],
+                    'end_time_seconds': segment['end'],
+                    'duration_seconds': segment['end'] - segment['start'],
+                    'text': segment['text'].strip(),
+                    'language': transcription_data['language'],
+                    'timestamp': transcription_data['timestamp']
+                })
+            
+            print(f"[DEBUG] Creating DataFrame with {len(segments_data)} segments")
+            # Create DataFrame with segments
+            segments_df = pd.DataFrame(segments_data)
+            
+            print(f"[DEBUG] Writing Excel file to {excel_path}")
+            # Create a writer object
+            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
+                # Write segments to single sheet
+                segments_df.to_excel(writer, sheet_name='Transcription', index=False)
+            print(f"[DEBUG] Excel file written successfully")
+            
+        except Exception as e:
+            print(f"[ERROR] Error in _save_to_excel: {str(e)}")
+            raise Exception(f"Failed to save Excel file: {str(e)}")
     
     def get_transcription(self, video_id):
         """Get transcription data for a specific video."""

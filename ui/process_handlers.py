@@ -33,9 +33,7 @@ def handle_split_audio(video_id: str, file_path: str, grid_position: str, audio_
                 transcription_service.get_excel_path(video_id),
                 'wav'
             )
-            if split_success:
-                st.success("✅ Audio split successfully!")
-            else:
+            if not split_success:
                 st.warning(f"⚠️ Audio split failed: {split_result}")
         
         set_processing_state(video_id, grid_position, "split", False)
@@ -51,13 +49,10 @@ def handle_transcription(video_id: str, file_path: str, grid_position: str,
         transcribe_success = False
         with st.spinner("Transcribing audio..."):
             transcribe_success, transcribe_result = transcription_service.transcribe_audio(file_path, video_id)
-            if transcribe_success:
-                st.success("✅ Audio transcribed successfully!")
-            else:
+            if not transcribe_success:
                 st.warning(f"⚠️ Audio transcription failed: {transcribe_result}")
                 set_processing_state(video_id, grid_position, "transcribe", False)
                 st.rerun()
-                return
         
         # Proceed with splitting if transcription was successful
         if transcribe_success:
@@ -75,14 +70,11 @@ def handle_conversion(video_id: str, file_path: str, grid_position: str,
     try:
         convert_success = False
         with st.spinner("Converting to OGG format..."):
-            convert_success, convert_result = audio_service.convert_to_ogg(file_path)
-            if convert_success:
-                st.success("✅ Conversion successful!")
-            else:
+            convert_success, convert_result = audio_service.convert_to_ogg(file_path, video_id)
+            if not convert_success:
                 st.error(f"❌ Conversion failed: {convert_result}")
                 set_processing_state(video_id, grid_position, "convert", False)
                 st.rerun()
-                return
         
         # Proceed with transcription if conversion was successful
         if convert_success:
@@ -109,7 +101,6 @@ def handle_download(video_id: str, grid_position: str, youtube_service: YouTubeS
             st.error("❌ Download failed")
             set_processing_state(video_id, grid_position, "download", False)
             st.rerun()
-            return
         
         progress_bar.empty()
         mp3_path = youtube_service.get_source_path(video_id)

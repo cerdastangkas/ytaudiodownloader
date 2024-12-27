@@ -52,7 +52,7 @@ if video_info:
     
     with col2:
         # Display video info
-        st.header(f"🎥 {video_info.get('title', 'Untitled Video')}")
+        st.markdown(f"### 🎥 {video_info.get('title', 'Untitled Video')}")
         if 'id' in video_info:
             st.markdown(f"**Video ID**: {video_info['id']}")
         if 'channel_title' in video_info:
