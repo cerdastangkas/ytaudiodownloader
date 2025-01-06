@@ -49,6 +49,21 @@ class DataService:
         """Get video information from Excel file."""
         return self._get_video_info_from_excel(video_id)
     
+    def delete_video(self, video_id):
+        """Delete a video from the Excel database."""
+        try:
+            if os.path.exists(self.videos_excel):
+                df = pd.read_excel(self.videos_excel)
+                # Remove the video with the given ID
+                df = df[df['id'] != video_id]
+                # Save the updated DataFrame back to Excel
+                df.to_excel(self.videos_excel, index=False)
+                return True
+            return False
+        except Exception as e:
+            print(f"Error deleting video: {str(e)}")
+            return False
+    
     def get_downloaded_videos(self):
         """Get list of all downloaded videos from Excel."""
         try:
