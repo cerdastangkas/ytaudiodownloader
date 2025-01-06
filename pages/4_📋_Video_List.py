@@ -196,6 +196,15 @@ with st.sidebar:
         st.success("Videos sorted by duration and saved!")
         st.rerun()
 
+    st.subheader("Clean Data")
+    if st.button("Remove Duplicate Titles 🧹", use_container_width=True):
+        # Keep only the first occurrence of each title
+        video_list = video_list.drop_duplicates(subset=['title'], keep='first')
+        # Save the deduplicated data back to Excel
+        video_list.to_excel(data_service.videos_excel, index=False)
+        st.success("Duplicate videos removed!")
+        st.rerun()
+
 if video_list.empty:
     st.info("No videos found in the database. Search and save some videos first!")
 else:

@@ -70,7 +70,7 @@ st.markdown("""
 if 'downloaded_page' not in st.session_state:
     st.session_state.downloaded_page = 1
 if 'downloaded_per_page' not in st.session_state:
-    st.session_state.downloaded_per_page = 9
+    st.session_state.downloaded_per_page = 15
 
 # Title
 st.title('📂 Downloaded Files')
