@@ -1,179 +1,99 @@
-# YouTube Audio Downloader
+# YouTube Video Downloader
 
-A streamlined Streamlit application for searching and downloading audio from YouTube videos, with advanced features like audio format conversion, comprehensive metadata display, and audio transcription.
+A Streamlit-based application for searching, downloading, and managing YouTube videos with a focus on license filtering and audio extraction.
 
 ## Features
 
-### Main Features
-- 🔍 Search YouTube videos with custom queries
-- 📜 Filter videos by license type
-- ⏱️ Duration-based filtering (>3 minutes)
-- 🎵 Download audio in MP3 format
-- 🔄 Convert audio to OGG format
-- 🎯 Transcribe audio to text with timestamps
-- ✂️ Split audio into segments based on transcription
-- 📝 Interactive transcription viewer with audio playback
+### Search YouTube Videos
+- Search YouTube videos by keywords
+- Filter videos by license type (Creative Commons, Standard YouTube)
+- View video thumbnails, titles, descriptions, and durations
+- Download selected videos as audio files
 
-### Additional Features
-- 🖼️ Thumbnail previews for videos
-- 📊 Progress tracking for downloads and transcription
-- 📑 Export video details to Excel
-- 🔑 In-app API key management
-- 📱 Responsive and modern UI
-- 🎬 Video metadata display (title, channel, duration, views, likes)
-- 🎧 On-demand audio segment loading
-- 🔗 Direct links to YouTube videos
+### Video List
+- View all searched videos in a paginated list
+- Filter videos by channel name
+- Sort videos by:
+  - Published Date
+  - Duration
+  - Title
+  - Channel Name
+- Sort in ascending or descending order
+- Track which videos have been downloaded
 
-### Pages
-1. **Home Page** 🏠
-   - API key management
-   - Quick start guide
+### Downloaded Videos
+- View and manage downloaded audio files
+- Play audio files directly in the browser
+- Delete downloaded files
+- Database management:
+  - Update downloaded videos list (creates/updates `downloaded_videos.xlsx`)
+  - Clean up database by removing entries without audio files
+  - Two separate databases:
+    - `youtube_videos.xlsx`: All searched videos
+    - `downloaded_videos.xlsx`: Only downloaded videos
 
-2. **Search Page** 🔍
-   - YouTube video search with filters
-   - Video previews with metadata
-   - Download options
+### Settings
+- Set YouTube API Key
+- Configure download settings
+- Set data directory paths
 
-3. **Downloads Page** 📂
-   - List of downloaded videos
-   - Audio transcription controls
-   - View transcription button
-
-4. **Transcriptions Page** 📝
-   - Video information display
-   - Interactive audio segments
-   - Transcription text with timestamps
-   - Load audio on-demand for better performance
-
-## Prerequisites
-
-### YouTube API Key
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the YouTube Data API v3
-4. Create credentials (API key)
-5. Copy your API key
-
-### OpenAI API Key
-1. Visit [OpenAI Platform](https://platform.openai.com/)
-2. Sign up or log in to your account
-3. Go to API keys section
-4. Create a new API key
-
-## Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/ytaudiodownloader.git
-cd ytaudiodownloader
+## File Structure
+```
+asix_ytdl/
+├── data/
+│   ├── downloaded/     # Downloaded audio files
+│   ├── downloads.json  # Download history
+│   ├── youtube_videos.xlsx      # All searched videos
+│   └── downloaded_videos.xlsx   # Only downloaded videos
+├── domain/            # Business logic
+├── pages/            # Streamlit pages
+├── ui/               # UI components
+└── README.md
 ```
 
-2. Create and activate a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+## Requirements
+- Python 3.8+
+- Streamlit
+- pandas
+- pytube
+- youtube-dl
+- YouTube Data API v3 key
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-4. Create a `.env` file (optional, keys can be set in the app):
-```bash
-YOUTUBE_API_KEY=your_api_key_here
-OPENAI_API_KEY=your_openai_key_here
-```
+## Setup
+1. Clone the repository
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Set up your YouTube API key in the Settings page
+4. Run the application:
+   ```bash
+   streamlit run Home.py
+   ```
 
 ## Usage
+1. **Search Videos**:
+   - Enter keywords in the search box
+   - Select license type filter
+   - Click search
+   - Download desired videos
 
-1. Start the application:
-```bash
-streamlit run Home.py
-```
+2. **View All Videos**:
+   - Go to Video List page
+   - Filter by channel
+   - Sort by various criteria
+   - Track downloaded status
 
-2. Configure API Keys:
-   - Open the sidebar (≡ menu)
-   - Enter your YouTube API key
-   - (Optional) Enter your OpenAI API key
-   - Click "Apply" for each key
+3. **Manage Downloads**:
+   - Go to Downloaded Videos page
+   - Update downloaded videos database
+   - Clean up database if needed
+   - Play or delete downloaded files
 
-3. Search and Download:
-   - Go to "Search YouTube" page
-   - Enter search terms and click "Search"
-   - Click "Download" on any video to save its audio
-   - Download progress will be displayed
-
-4. Manage Downloads:
-   - Go to "Downloaded" page
-   - View all downloaded files with thumbnails
-   - Play audio directly in the browser
-   - Convert MP3 files to OGG format
-   - Delete unwanted files
-
-5. Transcribe and Split Audio:
-   - On the "Downloaded" page, convert audio to OGG format
-   - Click "Transcribe" to generate text with timestamps
-   - View transcriptions in the "Transcriptions" page
-   - Split audio into segments based on transcription
-   - Play individual audio segments alongside text
-
-## Project Structure
-
-```
-ytaudiodownloader/
-├── Home.py                 # Main application and configuration
-├── pages/
-│   ├── 1_Search_Youtube.py # Search and download interface
-│   └── 2_Downloaded.py     # Downloaded files management
-├── domain/
-│   ├── youtube_service.py  # YouTube API interactions
-│   ├── audio_service.py    # Audio conversion and management
-│   ├── data_service.py     # Excel data operations
-│   ├── config_service.py   # API key management
-│   ├── transcription_service.py # Audio transcription handling
-│   └── audio_splitter.py   # Audio segment management
-├── ui/
-│   ├── video_card.py       # Video display component
-│   └── results_display.py  # Results and pagination
-├── data/
-│   ├── downloaded/         # Downloaded MP3 files
-│   ├── converted/          # Converted OGG files
-│   ├── transcriptions/     # Transcription Excel files
-│   └── splits/            # Split audio segments
-├── requirements.txt        # Dependencies
-└── .env                    # Configuration (optional)
-```
-
-## Dependencies
-
-- streamlit
-- yt-dlp
-- google-api-python-client
-- python-dotenv
-- pandas
-- openpyxl
-- pydub
-- whisper
-- ffmpeg-python
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+4. **Settings**:
+   - Configure YouTube API key
+   - Set download preferences
+   - Manage data directories
 
 ## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Version History
-
-- v1.5.0: Added audio transcription and segment splitting features
-- v1.4.0: Added thumbnails, audio conversion, and in-app API key management
-- v1.3.0: Added audio format conversion and improved UI
-- v1.2.0: Added thumbnail preview and enhanced metadata display
-- v1.1.0: Refactored codebase with modular structure
-- v1.0.0: Initial release with basic functionality
+MIT License

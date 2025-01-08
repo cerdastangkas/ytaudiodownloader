@@ -67,6 +67,8 @@ if 'video_to_delete_title' not in st.session_state:
     st.session_state.video_to_delete_title = None
 if 'download_states' not in st.session_state:
     st.session_state.download_states = {}
+if 'channel_filter' not in st.session_state:
+    st.session_state.channel_filter = "All Channels"
 
 # Title
 st.title('📋 Video List')
@@ -213,9 +215,19 @@ else:
     
     # Sorting controls
     st.markdown("### Sort Videos")
-    col1, col2 = st.columns([2, 2])
+    col1, col2, col3 = st.columns([2, 2, 2])
     
+    # Channel filter
     with col1:
+        channel_names = data_service.get_channel_names()
+        selected_channel = st.selectbox(
+            "Filter by Channel:",
+            options=channel_names,
+            key='channel_filter'
+        )
+    
+    # Sorting controls
+    with col2:
         sort_options = {
             'published_at': 'Published Date',
             'duration_seconds': 'Duration',
@@ -229,7 +241,7 @@ else:
             key='sort_by'
         )
     
-    with col2:
+    with col3:
         order_options = {
             'asc': 'Ascending',
             'desc': 'Descending'
@@ -240,6 +252,10 @@ else:
             format_func=lambda x: order_options[x],
             key='sort_order'
         )
+    
+    # Apply channel filter
+    if selected_channel != "All Channels":
+        video_list = video_list[video_list['channel_title'] == selected_channel]
     
     # Apply sorting
     ascending = selected_order == 'asc'

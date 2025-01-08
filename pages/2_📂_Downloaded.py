@@ -73,8 +73,26 @@ if 'downloaded_per_page' not in st.session_state:
     st.session_state.downloaded_per_page = 15
 
 # Title
-st.title('📂 Downloaded Files')
-st.markdown('View, play, and manage your downloaded audio files')
+st.title('📂 Downloaded Videos')
+
+# Database management buttons
+st.markdown("### Database Management")
+col1, col2 = st.columns([1, 1])
+
+with col1:
+    if st.button("📝 Update Downloaded Videos List"):
+        total_saved = data_service.update_downloaded_videos_excel()
+        st.success(f"✅ Downloaded videos list updated! Found {total_saved} downloaded videos.")
+
+with col2:
+    if st.button("🧹 Clean Downloaded Videos List"):
+        removed = data_service.clean_downloaded_videos_excel()
+        if removed > 0:
+            st.warning(f"🗑️ Removed {removed} entries that no longer have audio files.")
+        else:
+            st.success("✅ No invalid entries found in the downloaded videos list.")
+
+st.markdown("---")
 
 # Add cleanup button in sidebar
 with st.sidebar:
