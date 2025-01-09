@@ -109,18 +109,21 @@ def get_downloaded_videos():
     data_dir = Path('data')
     data_dir.mkdir(exist_ok=True)
     excel_file = data_dir / 'youtube_videos.xlsx'
-    downloaded_dir = data_dir / 'downloaded'
+    final_result_dir = data_dir / 'final_result'
     
     try:
         # Create directories if they don't exist
-        os.makedirs(downloaded_dir, exist_ok=True)
+        os.makedirs(final_result_dir, exist_ok=True)
         
-        # Get list of downloaded audio files
-        downloaded_files = {
-            f.split('.')[0]: f 
-            for f in os.listdir(downloaded_dir) 
-            if f.endswith('.mp3')
-        }
+        # Get list of downloaded audio files from the new directory structure
+        downloaded_files = {}
+        if final_result_dir.exists():
+            for video_dir in final_result_dir.iterdir():
+                if video_dir.is_dir():
+                    vid_id = video_dir.name
+                    audio_file = video_dir / 'original' / f'{vid_id}.mp3'
+                    if audio_file.exists():
+                        downloaded_files[vid_id] = str(audio_file)
         
         if not downloaded_files:
             st.info('No audio files have been downloaded yet. Go to the Search page to download some videos!')
@@ -139,8 +142,8 @@ def get_downloaded_videos():
             vid_id = str(row['id'])
             if vid_id in downloaded_files:
                 video_info = row.to_dict()
-                video_info['file_name'] = downloaded_files[vid_id]
-                video_info['file_path'] = os.path.join(downloaded_dir, downloaded_files[vid_id])
+                video_info['file_name'] = f'{vid_id}.mp3'
+                video_info['file_path'] = downloaded_files[vid_id]
                 downloaded_videos.append(video_info)
         
         return downloaded_videos

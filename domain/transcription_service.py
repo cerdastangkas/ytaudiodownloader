@@ -10,9 +10,9 @@ class TranscriptionService:
     def __init__(self, data_dir='data', api_key=None):
         """Initialize the transcription service."""
         self.data_dir = Path(data_dir)
-        self.transcriptions_dir = self.data_dir / 'transcriptions'
+        self.final_result_dir = self.data_dir / 'final_result'
         self.chunks_dir = self.data_dir / 'chunks'
-        self.transcriptions_dir.mkdir(parents=True, exist_ok=True)
+        self.final_result_dir.mkdir(parents=True, exist_ok=True)
         self.chunks_dir.mkdir(parents=True, exist_ok=True)
         
         # Initialize OpenAI client with provided API key
@@ -22,8 +22,10 @@ class TranscriptionService:
         self.MAX_FILE_SIZE = 25 * 1024 * 1024  # 25MB in bytes
     
     def get_excel_path(self, video_id):
-        """Get the Excel file path for a specific video."""
-        return self.transcriptions_dir / f"{video_id}_transcription.xlsx"
+        """Get the CSV file path for a specific video."""
+        video_dir = self.final_result_dir / video_id
+        video_dir.mkdir(parents=True, exist_ok=True)
+        return video_dir / f"{video_id}_transcription.csv"
     
     def get_chunk_dir(self, video_id):
         """Get the directory for storing audio chunks."""
@@ -122,14 +124,14 @@ class TranscriptionService:
                 'timestamp': datetime.now().isoformat()
             }
             
-            print(f"[DEBUG] Saving transcription data to Excel")
+            print(f"[DEBUG] Saving transcription data to CSV")
             try:
-                # Save to Excel
-                self._save_to_excel(transcription_data)
-                print(f"[DEBUG] Excel file saved successfully at {self.get_excel_path(video_id)}")
-            except Exception as excel_error:
-                print(f"[ERROR] Failed to save Excel file: {str(excel_error)}")
-                return False, f"Transcription successful but failed to save Excel: {str(excel_error)}"
+                # Save to CSV
+                self._save_to_csv(transcription_data)
+                print(f"[DEBUG] CSV file saved successfully at {self.get_excel_path(video_id)}")
+            except Exception as csv_error:
+                print(f"[ERROR] Failed to save CSV file: {str(csv_error)}")
+                return False, f"Transcription successful but failed to save CSV: {str(csv_error)}"
             
             # Clean up chunks if they were created
             if len(chunks) > 1:
@@ -144,19 +146,28 @@ class TranscriptionService:
             print(f"[ERROR] Transcription failed: {str(e)}")
             return False, str(e)
     
-    def _save_to_excel(self, transcription_data):
-        """Save transcription data to Excel file."""
+    def _save_to_csv(self, transcription_data):
+        """Save transcription data to CSV file."""
         try:
             video_id = transcription_data['video_id']
-            excel_path = self.get_excel_path(video_id)
-            print(f"[DEBUG] Preparing Excel data for {video_id}")
+            csv_path = self.get_excel_path(video_id)
+            print(f"[DEBUG] Preparing CSV data for {video_id}")
+            
+            # Convert source path to relative path
+            source_path = Path(transcription_data['source_path'])
+            video_dir = self.final_result_dir / video_id
+            try:
+                relative_path = source_path.relative_to(video_dir)
+            except ValueError:
+                # If path is already relative or can't be made relative, use original
+                relative_path = source_path.name
             
             # Prepare segments data
             segments_data = []
             for segment in transcription_data['segments']:
                 segments_data.append({
                     'video_id': video_id,
-                    'source_path': transcription_data['source_path'],
+                    'source_path': str(relative_path),
                     'start_time_seconds': segment['start'],
                     'end_time_seconds': segment['end'],
                     'duration_seconds': segment['end'] - segment['start'],
@@ -169,33 +180,31 @@ class TranscriptionService:
             # Create DataFrame with segments
             segments_df = pd.DataFrame(segments_data)
             
-            print(f"[DEBUG] Writing Excel file to {excel_path}")
-            # Create a writer object
-            with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-                # Write segments to single sheet
-                segments_df.to_excel(writer, sheet_name='Transcription', index=False)
-            print(f"[DEBUG] Excel file written successfully")
+            print(f"[DEBUG] Writing CSV file to {csv_path}")
+            # Write segments to single sheet
+            segments_df.to_csv(csv_path, index=False)
+            print(f"[DEBUG] CSV file written successfully")
             
         except Exception as e:
-            print(f"[ERROR] Error in _save_to_excel: {str(e)}")
-            raise Exception(f"Failed to save Excel file: {str(e)}")
+            print(f"[ERROR] Error in _save_to_csv: {str(e)}")
+            raise Exception(f"Failed to save CSV file: {str(e)}")
     
     def get_transcription(self, video_id):
         """Get transcription data for a specific video."""
-        excel_path = self.get_excel_path(video_id)
+        csv_path = self.get_excel_path(video_id)
         
-        if not os.path.exists(excel_path):
+        if not os.path.exists(csv_path):
             return None
         
         try:
             # Try reading from new format first
             try:
-                segments_df = pd.read_excel(excel_path, sheet_name='Transcription')
+                segments_df = pd.read_csv(csv_path)
                 return segments_df.to_dict('records')
             except ValueError:  # Sheet not found, try old format
                 # Read from old format
-                segments_df = pd.read_excel(excel_path, sheet_name='Segments')
-                metadata_df = pd.read_excel(excel_path, sheet_name='Metadata')
+                segments_df = pd.read_csv(csv_path)
+                metadata_df = pd.read_csv(csv_path)
                 
                 # Convert to new format
                 segments_data = []
@@ -213,8 +222,7 @@ class TranscriptionService:
                 
                 # Save in new format for future use
                 new_df = pd.DataFrame(segments_data)
-                with pd.ExcelWriter(excel_path, engine='openpyxl') as writer:
-                    new_df.to_excel(writer, sheet_name='Transcription', index=False)
+                new_df.to_csv(csv_path, index=False)
                 
                 return segments_data
                 
@@ -224,5 +232,5 @@ class TranscriptionService:
     
     def has_transcription(self, video_id):
         """Check if transcription exists for a video."""
-        excel_path = self.get_excel_path(video_id)
-        return os.path.exists(excel_path)
+        csv_path = self.get_excel_path(video_id)
+        return os.path.exists(csv_path)

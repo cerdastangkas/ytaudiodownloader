@@ -108,8 +108,9 @@ for idx, split in enumerate(splits, 1):
         
         # Only load audio if checkbox is checked
         if load_audio:
+            split_audio_path = audio_splitter.get_splitted_audio_path(video_id, split['audio_file'])
             # Audio player
-            st.audio(split['audio_file'])
+            st.audio(split_audio_path)
             # Show segment duration
             st.caption(f"Duration: {split['duration_seconds']:.2f} seconds")
 

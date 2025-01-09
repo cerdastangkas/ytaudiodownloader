@@ -5,7 +5,8 @@ class YouTubeService:
     def __init__(self, api_key):
         self.api_key = api_key
         self.youtube_client = None
-        self.download_dir = Path(__file__).parent.parent / 'data' / 'downloaded'
+        self.final_result_dir = Path(__file__).parent.parent / 'data' / 'final_result'
+        self.final_result_dir.mkdir(parents=True, exist_ok=True)
         
     def get_youtube_client(self):
         """Lazy initialization of YouTube API client"""
@@ -117,8 +118,9 @@ class YouTubeService:
                     progress = (d['downloaded_bytes'] / total_bytes) * 100
                     progress_callback(min(progress, 100))
         
-        output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'downloaded')
-        output_template = os.path.join(output_dir, f'{video_id}.%(ext)s')
+        video_dir = self.final_result_dir / video_id / 'original'
+        video_dir.mkdir(parents=True, exist_ok=True)
+        output_template = os.path.join(video_dir, f'{video_id}.%(ext)s')
         
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -140,7 +142,7 @@ class YouTubeService:
                 return {
                     'success': True,
                     'title': info['title'],
-                    'filename': os.path.join(output_dir, f'{video_id}.mp3')
+                    'filename': os.path.join(video_dir, f'{video_id}.mp3')
                 }
         except Exception as e:
             return {
@@ -150,16 +152,15 @@ class YouTubeService:
 
     def get_source_path(self, video_id):
         """Get the path to the downloaded audio file."""
-        path = self.download_dir / f"{video_id}.mp3"
+        video_dir = self.final_result_dir / video_id / 'original'
+        video_dir.mkdir(parents=True, exist_ok=True)
+        path = video_dir / f"{video_id}.mp3"
         return str(path.relative_to(Path.cwd()))
 
     def is_audio_downloaded(self, video_id):
         """Check if audio for this video is already downloaded"""
-        import os
-        
-        output_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'downloaded')
-        audio_file = os.path.join(output_dir, f'{video_id}.mp3')
-        return os.path.exists(audio_file)
+        path = self.final_result_dir / video_id / 'original' / f"{video_id}.mp3"
+        return path.exists()
 
     @staticmethod
     def _format_duration(duration):

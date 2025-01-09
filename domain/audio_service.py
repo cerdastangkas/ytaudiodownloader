@@ -4,11 +4,11 @@ from pydub import AudioSegment
 
 class AudioService:
     def __init__(self):
-        self.download_dir = Path('data/downloaded')
+        self.final_result_dir = Path('data/final_result')
+        self.final_result_dir.mkdir(parents=True, exist_ok=True)
         self.converted_dir = Path('data/converted')
         
         # Create directories if they don't exist
-        self.download_dir.mkdir(parents=True, exist_ok=True)
         self.converted_dir.mkdir(parents=True, exist_ok=True)
     
     def convert_to_ogg(self, mp3_path, video_id=None):
@@ -41,3 +41,9 @@ class AudioService:
         exists = ogg_path.exists()
         print(f"[DEBUG] Checking for converted file: {ogg_path} (exists: {exists})")
         return ogg_path if exists else None
+
+    def get_original_audio_path(self, video_id):
+        """Get the path for the original audio file"""
+        video_dir = self.final_result_dir / video_id / 'original'
+        video_dir.mkdir(parents=True, exist_ok=True)
+        return video_dir
